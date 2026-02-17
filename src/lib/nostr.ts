@@ -1,5 +1,6 @@
 import { createSignal, createContext, useContext } from 'solid-js';
-import { SimplePool, type Event } from 'nostr-tools';
+import { SimplePool, type Event, type EventTemplate, generateSecretKey } from 'nostr-tools';
+import { BunkerSigner, parseBunkerInput } from 'nostr-tools/nip46';
 import type { AuthState, UserRelay } from './types';
 
 // NIP-07 window.nostr interface
@@ -17,15 +18,36 @@ declare global {
   }
 }
 
+// Unified signer interface
+interface Signer {
+  getPublicKey(): Promise<string>;
+  signEvent(event: EventTemplate): Promise<Event>;
+}
+
+// NIP-07 adapter to match Signer interface
+class Nip07Signer implements Signer {
+  async getPublicKey(): Promise<string> {
+    if (!window.nostr) throw new Error('No Nostr extension found');
+    return window.nostr.getPublicKey();
+  }
+
+  async signEvent(event: EventTemplate): Promise<Event> {
+    if (!window.nostr) throw new Error('No Nostr extension found');
+    return window.nostr.signEvent(event) as Promise<Event>;
+  }
+}
+
 // Auth context
 const AuthContext = createContext<{
   state: () => AuthState;
   login: () => Promise<void>;
+  loginNip46: (bunkerInput: string) => Promise<void>;
   logout: () => void;
   addRelay: (url: string, read?: boolean, write?: boolean) => Promise<void>;
   removeRelay: (url: string) => Promise<void>;
   hasRelay: (url: string) => boolean;
   isLoading: () => boolean;
+  hasNip07: () => boolean;
 }>();
 
 export function useAuth() {
@@ -54,6 +76,10 @@ export function createAuthStore() {
 
   const pool = new SimplePool();
 
+  // Current signer (NIP-07 or NIP-46)
+  let currentSigner: Signer | null = null;
+  let bunkerSigner: BunkerSigner | null = null;
+
   // Check if NIP-07 extension is available
   function hasNip07(): boolean {
     return typeof window !== 'undefined' && !!window.nostr;
@@ -67,7 +93,8 @@ export function createAuthStore() {
 
     setIsLoading(true);
     try {
-      const pubkey = await window.nostr!.getPublicKey();
+      currentSigner = new Nip07Signer();
+      const pubkey = await currentSigner.getPublicKey();
 
       // Fetch user's relay list (kind 10002)
       const relayList = await fetchRelayList(pubkey);
@@ -82,7 +109,59 @@ export function createAuthStore() {
     }
   }
 
-  function logout(): void {
+  // Login with NIP-46 (remote signer)
+  async function loginNip46(bunkerInput: string): Promise<void> {
+    setIsLoading(true);
+    try {
+      // Parse bunker:// URL or NIP-05 identifier
+      const bp = await parseBunkerInput(bunkerInput);
+      if (!bp) {
+        throw new Error('Invalid bunker URL or NIP-05 identifier');
+      }
+
+      // Generate a client secret key for this session
+      const clientSecretKey = generateSecretKey();
+
+      // Create the bunker signer
+      bunkerSigner = BunkerSigner.fromBunker(clientSecretKey, bp, { pool });
+
+      // Connect to the bunker
+      await bunkerSigner.connect();
+
+      // Get the public key
+      const pubkey = await bunkerSigner.getPublicKey();
+
+      currentSigner = bunkerSigner;
+
+      // Fetch user's relay list (kind 10002)
+      const relayList = await fetchRelayList(pubkey);
+
+      setState({
+        pubkey,
+        method: 'nip46',
+        relayList,
+      });
+    } catch (err) {
+      // Clean up on error
+      if (bunkerSigner) {
+        await bunkerSigner.close().catch(() => {});
+        bunkerSigner = null;
+      }
+      currentSigner = null;
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  async function logout(): Promise<void> {
+    // Clean up NIP-46 connection if active
+    if (bunkerSigner) {
+      await bunkerSigner.close().catch(() => {});
+      bunkerSigner = null;
+    }
+    currentSigner = null;
+
     setState({
       pubkey: null,
       method: null,
@@ -124,7 +203,7 @@ export function createAuthStore() {
   // Add relay to user's list
   async function addRelay(url: string, read = true, write = true): Promise<void> {
     const currentState = state();
-    if (!currentState.pubkey || !hasNip07()) {
+    if (!currentState.pubkey || !currentSigner) {
       throw new Error('Not logged in');
     }
 
@@ -144,7 +223,7 @@ export function createAuthStore() {
   // Remove relay from user's list
   async function removeRelay(url: string): Promise<void> {
     const currentState = state();
-    if (!currentState.pubkey || !hasNip07()) {
+    if (!currentState.pubkey || !currentSigner) {
       throw new Error('Not logged in');
     }
 
@@ -161,8 +240,8 @@ export function createAuthStore() {
 
   // Publish kind 10002 event
   async function publishRelayList(relays: UserRelay[]): Promise<void> {
-    if (!hasNip07()) {
-      throw new Error('No Nostr extension found');
+    if (!currentSigner) {
+      throw new Error('Not logged in');
     }
 
     const tags = relays.map(r => {
@@ -175,29 +254,31 @@ export function createAuthStore() {
       }
     });
 
-    const unsignedEvent = {
+    const unsignedEvent: EventTemplate = {
       kind: 10002,
       created_at: Math.floor(Date.now() / 1000),
       tags,
       content: '',
     };
 
-    const signedEvent = await window.nostr!.signEvent(unsignedEvent);
+    const signedEvent = await currentSigner.signEvent(unsignedEvent);
 
     // Publish to default relays
     await Promise.allSettled(
-      DEFAULT_RELAYS.map(relay => pool.publish([relay], signedEvent))
+      DEFAULT_RELAYS.map(relay => pool.publish([relay], signedEvent as Event))
     );
   }
 
   return {
     state,
     login,
+    loginNip46,
     logout,
     addRelay,
     removeRelay,
     hasRelay,
     isLoading,
+    hasNip07,
   };
 }
 
