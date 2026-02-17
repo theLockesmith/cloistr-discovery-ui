@@ -1,6 +1,7 @@
 import type { Relay, RelayFilters, RelayListResponse } from './types';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'https://discovery.coldforge.xyz/api/v1';
+// Use relative path since UI and API are on the same domain via path-based routing
+const API_BASE = import.meta.env.VITE_API_URL || '/api/v1';
 
 export class DiscoveryAPI {
   private baseUrl: string;
