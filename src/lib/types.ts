@@ -29,6 +29,7 @@ export interface Relay {
 
   // Location
   location: string;
+  country_code?: string;  // ISO 2-letter code (e.g., "US", "DE")
 
   // Timestamps
   first_seen: string;

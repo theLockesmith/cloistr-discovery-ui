@@ -1,13 +1,16 @@
-import { createSignal } from 'solid-js';
+import { createSignal, Show } from 'solid-js';
 import { AuthContext, createAuthStore } from './lib/nostr';
-import { RelayList, FilterBar, LoginButton, RecommendationWizard } from './components';
+import { RelayList, RelayMap, FilterBar, LoginButton, RecommendationWizard } from './components';
 import type { RelayFilters } from './lib/types';
 import './App.css';
+
+type ViewMode = 'list' | 'map';
 
 function App() {
   const auth = createAuthStore();
   const [filters, setFilters] = createSignal<RelayFilters>({ health: 'online' });
   const [showWizard, setShowWizard] = createSignal(false);
+  const [viewMode, setViewMode] = createSignal<ViewMode>('list');
 
   return (
     <AuthContext.Provider value={auth}>
@@ -29,7 +32,28 @@ function App() {
 
         <main class="main">
           <FilterBar filters={filters()} onFilterChange={setFilters} />
-          <RelayList filters={filters()} />
+
+          <div class="view-toggle">
+            <button
+              class={`view-toggle-btn ${viewMode() === 'list' ? 'active' : ''}`}
+              onClick={() => setViewMode('list')}
+            >
+              List
+            </button>
+            <button
+              class={`view-toggle-btn ${viewMode() === 'map' ? 'active' : ''}`}
+              onClick={() => setViewMode('map')}
+            >
+              Map
+            </button>
+          </div>
+
+          <Show when={viewMode() === 'list'}>
+            <RelayList filters={filters()} />
+          </Show>
+          <Show when={viewMode() === 'map'}>
+            <RelayMap filters={filters()} />
+          </Show>
         </main>
 
         <footer class="footer">
