@@ -5,6 +5,9 @@ import { RelayCard } from './RelayCard';
 
 interface RelayListProps {
   filters: RelayFilters;
+  selectedRelays?: Relay[];
+  onSelectRelay?: (relay: Relay, selected: boolean) => void;
+  maxSelection?: number;
 }
 
 type SortField = 'latency_ms' | 'uptime_percent' | 'name' | 'health';
@@ -131,7 +134,17 @@ export function RelayList(props: RelayListProps) {
 
         <div class="relay-grid">
           <For each={sortedRelays()}>
-            {relay => <RelayCard relay={relay} />}
+            {relay => (
+              <RelayCard
+                relay={relay}
+                selected={props.selectedRelays?.some(r => r.url === relay.url)}
+                onSelect={props.onSelectRelay}
+                selectionDisabled={
+                  props.maxSelection !== undefined &&
+                  (props.selectedRelays?.length ?? 0) >= props.maxSelection
+                }
+              />
+            )}
           </For>
         </div>
       </Show>

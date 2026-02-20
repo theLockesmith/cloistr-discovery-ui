@@ -1,16 +1,47 @@
 import { createSignal, Show } from 'solid-js';
 import { AuthContext, createAuthStore } from './lib/nostr';
-import { RelayList, RelayMap, FilterBar, LoginButton, RecommendationWizard } from './components';
-import type { RelayFilters } from './lib/types';
+import { RelayList, RelayMap, FilterBar, LoginButton, RecommendationWizard, CompareBar, CompareView } from './components';
+import type { Relay, RelayFilters } from './lib/types';
 import './App.css';
 
 type ViewMode = 'list' | 'map';
+const MAX_COMPARE = 3;
 
 function App() {
   const auth = createAuthStore();
   const [filters, setFilters] = createSignal<RelayFilters>({ health: 'online' });
   const [showWizard, setShowWizard] = createSignal(false);
   const [viewMode, setViewMode] = createSignal<ViewMode>('list');
+  const [selectedRelays, setSelectedRelays] = createSignal<Relay[]>([]);
+  const [showCompare, setShowCompare] = createSignal(false);
+
+  const handleSelectRelay = (relay: Relay, selected: boolean) => {
+    if (selected) {
+      if (selectedRelays().length < MAX_COMPARE) {
+        setSelectedRelays([...selectedRelays(), relay]);
+      }
+    } else {
+      setSelectedRelays(selectedRelays().filter(r => r.url !== relay.url));
+    }
+  };
+
+  const handleRemoveFromCompare = (relay: Relay) => {
+    setSelectedRelays(selectedRelays().filter(r => r.url !== relay.url));
+  };
+
+  const handleClearSelection = () => {
+    setSelectedRelays([]);
+  };
+
+  const handleCompare = () => {
+    if (selectedRelays().length >= 2) {
+      setShowCompare(true);
+    }
+  };
+
+  const handleCloseCompare = () => {
+    setShowCompare(false);
+  };
 
   return (
     <AuthContext.Provider value={auth}>
@@ -49,7 +80,12 @@ function App() {
           </div>
 
           <Show when={viewMode() === 'list'}>
-            <RelayList filters={filters()} />
+            <RelayList
+              filters={filters()}
+              selectedRelays={selectedRelays()}
+              onSelectRelay={handleSelectRelay}
+              maxSelection={MAX_COMPARE}
+            />
           </Show>
           <Show when={viewMode() === 'map'}>
             <RelayMap filters={filters()} />
@@ -62,6 +98,19 @@ function App() {
             Discovery API: <a href="https://discovery.coldforge.xyz">discovery.coldforge.xyz</a>
           </p>
         </footer>
+
+        <CompareBar
+          selectedRelays={selectedRelays()}
+          onCompare={handleCompare}
+          onClear={handleClearSelection}
+          onRemove={handleRemoveFromCompare}
+        />
+
+        <CompareView
+          relays={selectedRelays()}
+          isOpen={showCompare()}
+          onClose={handleCloseCompare}
+        />
 
         <RecommendationWizard
           isOpen={showWizard()}

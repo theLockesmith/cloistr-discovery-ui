@@ -4,11 +4,19 @@ import { useAuth } from '../lib/nostr';
 
 interface RelayCardProps {
   relay: Relay;
+  selected?: boolean;
+  onSelect?: (relay: Relay, selected: boolean) => void;
+  selectionDisabled?: boolean;
 }
 
 export function RelayCard(props: RelayCardProps) {
   const auth = useAuth();
   const relay = () => props.relay;
+
+  const handleCheckboxChange = (e: Event) => {
+    const checked = (e.target as HTMLInputElement).checked;
+    props.onSelect?.(relay(), checked);
+  };
 
   const healthColor = () => {
     switch (relay().health) {
@@ -36,7 +44,18 @@ export function RelayCard(props: RelayCardProps) {
   };
 
   return (
-    <div class="relay-card">
+    <div class={`relay-card ${props.selected ? 'relay-card-selected' : ''}`}>
+      <Show when={props.onSelect}>
+        <label class="relay-checkbox">
+          <input
+            type="checkbox"
+            checked={props.selected}
+            onChange={handleCheckboxChange}
+            disabled={props.selectionDisabled && !props.selected}
+          />
+          <span class="checkbox-mark" />
+        </label>
+      </Show>
       <div class="relay-header">
         <div class="relay-title">
           <span class="health-dot" style={{ "background-color": healthColor() }} />
