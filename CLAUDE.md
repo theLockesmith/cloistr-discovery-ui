@@ -2,6 +2,11 @@
 
 **Relay discovery web UI - find, filter, and manage Nostr relays**
 
+## REQUIRED READING (Before ANY Action)
+
+**Claude MUST read this file at the start of every session:**
+- `~/claude/coldforge/cloistr/CLAUDE.md` - Cloistr project rules (contains further required reading)
+
 ## Documentation
 
 Full documentation: `~/claude/coldforge/cloistr/services/discovery-ui/CLAUDE.md`
