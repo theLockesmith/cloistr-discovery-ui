@@ -94,8 +94,7 @@ function App() {
 
         <footer class="footer">
           <p>
-            Powered by <a href="https://cloistr.xyz">Cloistr</a> |
-            Discovery API: <a href="https://discovery.coldforge.xyz">discovery.coldforge.xyz</a>
+            Powered by <a href="https://cloistr.xyz">Cloistr</a>
           </p>
         </footer>
 
