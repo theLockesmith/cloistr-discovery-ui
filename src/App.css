@@ -909,9 +909,10 @@ a:hover {
 
 /* View Toggle */
 .view-toggle {
-  display: flex;
+  display: inline-flex;
   gap: 0.25rem;
-  background: var(--color-surface-elevated);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   padding: 0.25rem;
   margin-bottom: 1rem;
