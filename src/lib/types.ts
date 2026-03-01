@@ -5,41 +5,40 @@ export interface Relay {
   name: string;
   description: string;
   pubkey: string;
-  contact: string;
   software: string;
   version: string;
-  nips: number[];
+  supported_nips: number[] | null;
 
   // Health & performance
   health: 'online' | 'degraded' | 'offline';
   latency_ms: number;
-  uptime_percent: number;
-
-  // Social/community metadata
-  topics: string[];
-  atmosphere: string;
-  moderation: 'unmoderated' | 'light' | 'active' | 'strict';
-  content_policy: 'anything' | 'sfw' | 'nsfw-allowed' | 'nsfw-only';
-  languages: string[];
-  community: string;
-
-  // Access
-  payment: 'free' | 'paid' | 'hybrid';
-  admission: 'open' | 'approval' | 'invite' | 'closed';
-
-  // Location
-  location: string;
-  country_code?: string;  // ISO 2-letter code (e.g., "US", "DE")
-
-  // Timestamps
-  first_seen: string;
-  last_seen: string;
   last_checked: string;
+
+  // Access (from API)
+  payment_required: boolean;
+  auth_required: boolean;
+
+  // Optional fields (may be added to backend later)
+  contact?: string;
+  uptime_percent?: number;
+  topics?: string[];
+  atmosphere?: string;
+  moderation?: 'unmoderated' | 'light' | 'active' | 'strict';
+  content_policy?: 'anything' | 'sfw' | 'nsfw-allowed' | 'nsfw-only';
+  languages?: string[];
+  community?: string;
+  payment?: 'free' | 'paid' | 'hybrid';
+  admission?: 'open' | 'approval' | 'invite' | 'closed';
+  location?: string;
+  country_code?: string;  // ISO 2-letter code (e.g., "US", "DE")
+  first_seen?: string;
+  last_seen?: string;
 }
 
 export interface RelayFilters {
   health?: 'online' | 'degraded' | 'offline';
   nips?: string;  // comma-separated
+  search?: string; // full-text search
   topic?: string; // comma-separated, OR logic
   atmosphere?: string;
   moderation?: string;

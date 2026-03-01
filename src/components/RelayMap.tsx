@@ -29,12 +29,14 @@ export function RelayMap(props: Props) {
   const [selectedCountry, setSelectedCountry] = createSignal<CountryGroup | null>(null);
   const [addingRelay, setAddingRelay] = createSignal<string | null>(null);
 
-  // Group relays by country
+  // Group relays by country (skip relays without country_code)
   const countryGroups = (): CountryGroup[] => {
     const groups: Record<string, CountryGroup> = {};
 
     for (const relay of relays()) {
-      const code = relay.country_code || 'XX';
+      const code = relay.country_code;
+      if (!code) continue; // Skip relays without geo data
+
       const coords = getCountryCoordinates(code);
       if (!coords) continue;
 
@@ -51,6 +53,9 @@ export function RelayMap(props: Props) {
 
     return Object.values(groups);
   };
+
+  // Check if any relays have geo data
+  const hasGeoData = () => countryGroups().length > 0;
 
   // Initialize map
   onMount(() => {
@@ -159,6 +164,14 @@ export function RelayMap(props: Props) {
 
       <Show when={error()}>
         <div class="map-error">{error()}</div>
+      </Show>
+
+      <Show when={!loading() && !error() && relays().length > 0 && !hasGeoData()}>
+        <div class="map-no-geo">
+          Geographic data not available for relays.
+          <br />
+          <span class="map-no-geo-hint">Relay location data will be added in a future update.</span>
+        </div>
       </Show>
 
       <div ref={mapContainer} class="relay-map" />

@@ -74,7 +74,7 @@ export function RelayCard(props: RelayCardProps) {
 
       <div class="relay-tags">
         <Show when={relay().topics?.length}>
-          {relay().topics.map(topic => (
+          {relay().topics?.map(topic => (
             <span class="tag tag-topic">{topic}</span>
           ))}
         </Show>
@@ -91,22 +91,22 @@ export function RelayCard(props: RelayCardProps) {
 
       <div class="relay-nips">
         <span class="nips-label">NIPs:</span>
-        {relay().nips?.slice(0, 10).map(nip => (
-          <span class="nip-badge">{nip}</span>
-        ))}
-        <Show when={relay().nips?.length > 10}>
-          <span class="nip-more">+{relay().nips.length - 10} more</span>
+        <Show when={relay().supported_nips?.length} fallback={<span class="nip-badge">—</span>}>
+          {relay().supported_nips?.slice(0, 10).map(nip => (
+            <span class="nip-badge">{nip}</span>
+          ))}
+          <Show when={(relay().supported_nips?.length || 0) > 10}>
+            <span class="nip-more">+{relay().supported_nips!.length - 10} more</span>
+          </Show>
         </Show>
       </div>
 
       <div class="relay-footer">
         <div class="relay-meta">
-          <Show when={relay().uptime_percent}>
-            <span>{relay().uptime_percent.toFixed(1)}% uptime</span>
+          <Show when={relay().uptime_percent !== undefined}>
+            <span>{relay().uptime_percent!.toFixed(1)}% uptime</span>
           </Show>
-          <Show when={relay().payment}>
-            <span class="payment-badge">{relay().payment}</span>
-          </Show>
+          <span class="payment-badge">{relay().payment_required ? 'paid' : 'free'}</span>
         </div>
 
         <Show when={auth.state().pubkey}>

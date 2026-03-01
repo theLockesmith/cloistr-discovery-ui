@@ -128,13 +128,13 @@ export function CompareView(props: Props) {
                 <For each={props.relays}>
                   {(relay) => (
                     <div class="compare-cell compare-cell-nips">
-                      <span class="compare-nip-count">{relay.nips?.length || 0} NIPs</span>
+                      <span class="compare-nip-count">{relay.supported_nips?.length || 0} NIPs</span>
                       <div class="compare-nip-list">
-                        {relay.nips?.slice(0, 8).map(nip => (
+                        {relay.supported_nips?.slice(0, 8).map(nip => (
                           <span class="nip-badge">{nip}</span>
                         ))}
-                        <Show when={(relay.nips?.length || 0) > 8}>
-                          <span class="nip-more">+{relay.nips!.length - 8}</span>
+                        <Show when={(relay.supported_nips?.length || 0) > 8}>
+                          <span class="nip-more">+{relay.supported_nips!.length - 8}</span>
                         </Show>
                       </div>
                     </div>
@@ -172,21 +172,21 @@ export function CompareView(props: Props) {
                 <For each={props.relays}>
                   {(relay) => (
                     <div class="compare-cell">
-                      <span class={`payment-badge payment-${relay.payment}`}>
-                        {relay.payment || 'unknown'}
+                      <span class={`payment-badge ${relay.payment_required ? 'payment-paid' : 'payment-free'}`}>
+                        {relay.payment_required ? 'paid' : 'free'}
                       </span>
                     </div>
                   )}
                 </For>
               </div>
 
-              {/* Admission */}
+              {/* Auth Required */}
               <div class="compare-row">
-                <div class="compare-label">Admission</div>
+                <div class="compare-label">Auth</div>
                 <For each={props.relays}>
                   {(relay) => (
                     <div class="compare-cell">
-                      {relay.admission || 'unknown'}
+                      {relay.auth_required ? 'required' : 'open'}
                     </div>
                   )}
                 </For>

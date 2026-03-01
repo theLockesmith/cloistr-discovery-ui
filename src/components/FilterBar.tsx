@@ -94,7 +94,7 @@ export function FilterBar(props: FilterBarProps) {
           value={searchText()}
           onInput={(e) => {
             setSearchText(e.currentTarget.value);
-            updateFilter('community', e.currentTarget.value || undefined);
+            updateFilter('search', e.currentTarget.value || undefined);
           }}
         />
         <Show when={hasActiveFilters()}>
