@@ -1,28 +1,48 @@
-## Usage
+# Cloistr Relay Discovery UI
+
+Web interface for discovering and managing Nostr relays.
+
+**Production:** https://discover.cloistr.xyz
+
+## Features
+
+- Browse and filter relays by health, NIPs, and more
+- Full-text search across relay names and descriptions
+- NIP-07 and NIP-46 login support
+- Add/remove relays to your NIP-65 relay list
+- Relay comparison view (side-by-side)
+- Recommendation wizard for new users
+- Geographic map view (when backend provides location data)
+
+## Tech Stack
+
+- **Framework:** SolidJS
+- **Language:** TypeScript
+- **Build:** Vite
+- **Nostr:** nostr-tools
+
+## Development
 
 ```bash
-$ npm install # or pnpm install or yarn install
+pnpm install
+pnpm dev      # Start dev server at http://localhost:5173
+pnpm build    # Build for production
+pnpm preview  # Preview production build
 ```
 
-### Learn more on the [Solid Website](https://solidjs.com) and come chat with us on our [Discord](https://discord.com/invite/solidjs)
+## API
 
-## Available Scripts
+The UI connects to the discovery backend at `/api/v1/` (same domain in production).
 
-In the project directory, you can run:
-
-### `npm run dev`
-
-Runs the app in the development mode.<br>
-Open [http://localhost:5173](http://localhost:5173) to view it in the browser.
-
-### `npm run build`
-
-Builds the app for production to the `dist` folder.<br>
-It correctly bundles Solid in production mode and optimizes the build for the best performance.
-
-The build is minified and the filenames include the hashes.<br>
-Your app is ready to be deployed!
+For local development with the backend:
+```bash
+VITE_API_URL=http://localhost:8080/api/v1 pnpm dev
+```
 
 ## Deployment
 
-Learn more about deploying your application with the [documentations](https://vite.dev/guide/static-deploy.html)
+Deployed via Atlas to Kubernetes. See `~/Atlas/roles/kube/coldforge-discovery-ui/`.
+
+## Documentation
+
+Full service documentation: `~/claude/coldforge/cloistr/services/discovery-ui/CLAUDE.md`
