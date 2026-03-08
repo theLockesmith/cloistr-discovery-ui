@@ -49,8 +49,11 @@ function App() {
         <header class="header">
           <div class="header-content">
             <div class="brand">
-              <h1>Relay Discovery</h1>
-              <span class="tagline">Find your perfect Nostr relays</span>
+              <img src="/cloistr-logo.svg" alt="Cloistr" class="brand-logo" />
+              <div class="brand-text">
+                <h1>Relay Discovery</h1>
+                <span class="tagline">Find your perfect Nostr relays</span>
+              </div>
             </div>
             <div class="header-actions">
               <button class="btn btn-wizard" onClick={() => setShowWizard(true)}>

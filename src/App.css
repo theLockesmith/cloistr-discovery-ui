@@ -62,7 +62,18 @@ a:hover {
   align-items: center;
 }
 
-.brand h1 {
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.brand-logo {
+  height: 48px;
+  width: auto;
+}
+
+.brand-text h1 {
   margin: 0;
   font-size: 1.5rem;
   color: var(--color-primary);
