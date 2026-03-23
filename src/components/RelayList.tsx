@@ -10,7 +10,7 @@ interface RelayListProps {
   maxSelection?: number;
 }
 
-type SortField = 'latency_ms' | 'name';
+type SortField = 'latency_ms' | 'name' | 'health';
 type SortOrder = 'asc' | 'desc';
 
 export function RelayList(props: RelayListProps) {
@@ -44,6 +44,14 @@ export function RelayList(props: RelayListProps) {
     list.sort((a, b) => {
       const aVal = a[field];
       const bVal = b[field];
+
+      // Handle health as priority: online > degraded > offline
+      if (field === 'health') {
+        const healthOrder = { online: 0, degraded: 1, offline: 2 };
+        const aHealth = healthOrder[a.health] ?? 3;
+        const bHealth = healthOrder[b.health] ?? 3;
+        return order === 'asc' ? aHealth - bHealth : bHealth - aHealth;
+      }
 
       // Handle strings (name field)
       if (typeof aVal === 'string' && typeof bVal === 'string') {
@@ -102,6 +110,7 @@ export function RelayList(props: RelayListProps) {
         <div class="sort-controls">
           <span class="sort-label">Sort by:</span>
           <SortButton field="latency_ms" label="Latency" />
+          <SortButton field="health" label="Health" />
           <SortButton field="name" label="Name" />
         </div>
       </div>

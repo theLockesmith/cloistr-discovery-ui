@@ -186,13 +186,7 @@ export function RelayMap(props: Props) {
         </div>
       </Show>
 
-      <div
-        ref={mapContainer}
-        class="relay-map"
-        style={{
-          display: !loading() && !error() && (relays().length === 0 || !hasGeoData()) ? 'none' : 'block'
-        }}
-      />
+      <div ref={mapContainer} class="relay-map" />
 
       <Show when={selectedCountry()}>
         <div class="map-panel">
