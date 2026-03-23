@@ -3,12 +3,12 @@
 ## Issues Addressed
 
 ### 1. Sorting Options Fixed ✓
-**Problem:** Sort options showed "Uptime" and "Health" which didn't work because the backend doesn't provide these fields.
+**Problem:** Sort options for "Uptime" and "Health" didn't work properly.
 
 **Solution:**
-- Removed "Uptime" and "Health" sort options from src/components/RelayList.tsx
-- Now only shows "Latency" and "Name" which have reliable data from the backend
-- Simplified sorting logic to handle only these two fields
+- **Uptime removed**: Backend returns `uptime_percent: null` for all relays, so this data isn't available
+- **Health restored and fixed**: Now properly sorts by health status (online > degraded > offline)
+- Working sort options: **Latency**, **Health**, **Name**
 
 **Files Changed:**
 - `src/components/RelayList.tsx`
@@ -49,17 +49,22 @@
 
 ---
 
-### 4. Map Feature - Already Working Correctly ✓
-**Status:** No changes needed
+### 4. Map Feature - Fixed ✓
+**Problem:** Map container wasn't rendering at all (regression from previous fix attempt).
 
-**Explanation:**
-The map is properly implemented. It requires `country_code` field from the backend API to display relay locations. Currently the backend doesn't provide this field, so the map shows a helpful message:
+**Solution:**
+- Removed `display: none` style that prevented Leaflet from initializing the map
+- Map now renders properly and shows Leaflet tiles
+- Currently displays helpful message because backend doesn't provide `country_code` field:
 
 > "Geographic data not available - Relay location data is being collected and will be available soon."
 
-When the backend starts populating the `country_code` field in relay records, the map will automatically display markers grouped by country.
+When the backend starts populating the `country_code` field in relay records, markers will automatically appear.
 
 **Backend TODO:** Add geolocation data and populate `country_code` field in relay records.
+
+**Files Changed:**
+- `src/components/RelayMap.tsx`
 
 ---
 
