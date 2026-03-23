@@ -3,8 +3,8 @@ import { useAuth } from '../lib/nostr';
 
 export function LoginButton() {
   const auth = useAuth();
-  const [showOptions, setShowOptions] = createSignal(false);
-  const [showBunkerInput, setShowBunkerInput] = createSignal(false);
+  const [showModal, setShowModal] = createSignal(false);
+  const [loginMethod, setLoginMethod] = createSignal<'select' | 'nip46' | null>('select');
   const [bunkerUrl, setBunkerUrl] = createSignal('');
   const [error, setError] = createSignal<string | null>(null);
 
@@ -12,11 +12,30 @@ export function LoginButton() {
     return pubkey.slice(0, 8) + '...' + pubkey.slice(-8);
   };
 
+  const handleOpenModal = () => {
+    setShowModal(true);
+    setLoginMethod('select');
+    setError(null);
+  };
+
+  const handleCloseModal = () => {
+    setShowModal(false);
+    setLoginMethod('select');
+    setBunkerUrl('');
+    setError(null);
+  };
+
+  const handleBackdropClick = (e: MouseEvent) => {
+    if (e.target === e.currentTarget) {
+      handleCloseModal();
+    }
+  };
+
   const handleNip07Login = async () => {
     setError(null);
-    setShowOptions(false);
     try {
       await auth.login();
+      handleCloseModal();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
     }
@@ -32,8 +51,7 @@ export function LoginButton() {
 
     try {
       await auth.loginNip46(input);
-      setShowBunkerInput(false);
-      setBunkerUrl('');
+      handleCloseModal();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Connection failed');
     }
@@ -46,93 +64,19 @@ export function LoginButton() {
   };
 
   return (
-    <div class="login-section">
+    <>
       <Show
         when={auth.state().pubkey}
         fallback={
-          <div class="login-options">
-            <Show when={!showBunkerInput()}>
-              <Show
-                when={showOptions()}
-                fallback={
-                  <button
-                    class="btn btn-login"
-                    onClick={() => setShowOptions(true)}
-                    disabled={auth.isLoading()}
-                  >
-                    <Show when={auth.isLoading()} fallback="Login with Nostr">
-                      Connecting...
-                    </Show>
-                  </button>
-                }
-              >
-                <div class="login-dropdown">
-                  <button
-                    class="btn btn-login-option"
-                    onClick={handleNip07Login}
-                    disabled={auth.isLoading() || !auth.hasNip07()}
-                    title={auth.hasNip07() ? 'Login with browser extension' : 'No extension detected'}
-                  >
-                    Extension (NIP-07)
-                  </button>
-                  <button
-                    class="btn btn-login-option"
-                    onClick={() => {
-                      setShowOptions(false);
-                      setShowBunkerInput(true);
-                    }}
-                    disabled={auth.isLoading()}
-                  >
-                    Remote Signer (NIP-46)
-                  </button>
-                  <button
-                    class="btn btn-cancel"
-                    onClick={() => setShowOptions(false)}
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </Show>
+          <button
+            class="btn btn-login"
+            onClick={handleOpenModal}
+            disabled={auth.isLoading()}
+          >
+            <Show when={auth.isLoading()} fallback="Login with Nostr">
+              Connecting...
             </Show>
-
-            <Show when={showBunkerInput()}>
-              <div class="bunker-input-container">
-                <input
-                  type="text"
-                  class="bunker-input"
-                  placeholder="bunker://... or user@nsec.app"
-                  value={bunkerUrl()}
-                  onInput={(e) => setBunkerUrl(e.currentTarget.value)}
-                  onKeyDown={handleKeyDown}
-                  disabled={auth.isLoading()}
-                />
-                <button
-                  class="btn btn-connect"
-                  onClick={handleNip46Login}
-                  disabled={auth.isLoading() || !bunkerUrl().trim()}
-                >
-                  <Show when={auth.isLoading()} fallback="Connect">
-                    Connecting...
-                  </Show>
-                </button>
-                <button
-                  class="btn btn-cancel"
-                  onClick={() => {
-                    setShowBunkerInput(false);
-                    setBunkerUrl('');
-                    setError(null);
-                  }}
-                  disabled={auth.isLoading()}
-                >
-                  Cancel
-                </button>
-              </div>
-            </Show>
-
-            <Show when={error()}>
-              <div class="login-error">{error()}</div>
-            </Show>
-          </div>
+          </button>
         }
       >
         <div class="user-info">
@@ -148,6 +92,86 @@ export function LoginButton() {
           </button>
         </div>
       </Show>
-    </div>
+
+      <Show when={showModal()}>
+        <div class="wizard-overlay" onClick={handleBackdropClick}>
+          <div class="wizard-modal login-modal">
+            <div class="wizard-header">
+              <h2>Login with Nostr</h2>
+              <button class="wizard-close" onClick={handleCloseModal}>&times;</button>
+            </div>
+
+            <div class="wizard-content">
+              <Show when={loginMethod() === 'select'}>
+                <p class="wizard-question">Choose your login method:</p>
+                <div class="wizard-options">
+                  <button
+                    class="wizard-option"
+                    onClick={handleNip07Login}
+                    disabled={auth.isLoading() || !auth.hasNip07()}
+                    title={auth.hasNip07() ? 'Login with browser extension' : 'No extension detected'}
+                  >
+                    <span class="option-label">Browser Extension</span>
+                    <span class="option-desc">
+                      {auth.hasNip07() ? 'Use Alby, nos2x, or similar' : 'No extension detected'}
+                    </span>
+                  </button>
+                  <button
+                    class="wizard-option"
+                    onClick={() => setLoginMethod('nip46')}
+                    disabled={auth.isLoading()}
+                  >
+                    <span class="option-label">Remote Signer</span>
+                    <span class="option-desc">Use nsec.app, Amber, or bunker URL</span>
+                  </button>
+                </div>
+              </Show>
+
+              <Show when={loginMethod() === 'nip46'}>
+                <p class="wizard-question">Enter your remote signer:</p>
+                <div class="login-input-group">
+                  <input
+                    type="text"
+                    class="login-input"
+                    placeholder="bunker://... or user@nsec.app"
+                    value={bunkerUrl()}
+                    onInput={(e) => setBunkerUrl(e.currentTarget.value)}
+                    onKeyDown={handleKeyDown}
+                    disabled={auth.isLoading()}
+                    autofocus
+                  />
+                  <div class="login-actions">
+                    <button
+                      class="btn btn-back"
+                      onClick={() => {
+                        setLoginMethod('select');
+                        setBunkerUrl('');
+                        setError(null);
+                      }}
+                      disabled={auth.isLoading()}
+                    >
+                      Back
+                    </button>
+                    <button
+                      class="btn btn-next"
+                      onClick={handleNip46Login}
+                      disabled={auth.isLoading() || !bunkerUrl().trim()}
+                    >
+                      <Show when={auth.isLoading()} fallback="Connect">
+                        Connecting...
+                      </Show>
+                    </button>
+                  </div>
+                </div>
+              </Show>
+
+              <Show when={error()}>
+                <div class="wizard-error">{error()}</div>
+              </Show>
+            </div>
+          </div>
+        </div>
+      </Show>
+    </>
   );
 }

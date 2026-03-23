@@ -4,7 +4,7 @@ import { useAuth } from '../lib/nostr';
 import type { Relay } from '../lib/types';
 
 type UseCase = 'general' | 'developer' | 'creator';
-type Moderation = 'unmoderated' | 'light' | 'active' | 'strict';
+type Performance = 'fastest' | 'balanced' | 'any';
 type Payment = 'free' | 'any' | 'paid';
 
 interface Props {
@@ -16,7 +16,7 @@ export function RecommendationWizard(props: Props) {
   const auth = useAuth();
   const [step, setStep] = createSignal(1);
   const [useCase, setUseCase] = createSignal<UseCase | null>(null);
-  const [moderation, setModeration] = createSignal<Moderation | null>(null);
+  const [performance, setPerformance] = createSignal<Performance | null>(null);
   const [payment, setPayment] = createSignal<Payment | null>(null);
   const [results, setResults] = createSignal<Relay[]>([]);
   const [loading, setLoading] = createSignal(false);
@@ -26,7 +26,7 @@ export function RecommendationWizard(props: Props) {
   const reset = () => {
     setStep(1);
     setUseCase(null);
-    setModeration(null);
+    setPerformance(null);
     setPayment(null);
     setResults([]);
     setError(null);
@@ -45,7 +45,7 @@ export function RecommendationWizard(props: Props) {
 
   const canProceed = () => {
     if (step() === 1) return useCase() !== null;
-    if (step() === 2) return moderation() !== null;
+    if (step() === 2) return performance() !== null;
     if (step() === 3) return payment() !== null;
     return false;
   };
@@ -57,13 +57,8 @@ export function RecommendationWizard(props: Props) {
     try {
       const filters: Record<string, string> = {
         health: 'online',
-        limit: '5',
+        limit: '50', // Fetch more to filter client-side
       };
-
-      // Apply moderation filter
-      if (moderation()) {
-        filters.moderation = moderation()!;
-      }
 
       // Apply payment filter
       if (payment() === 'free') {
@@ -75,17 +70,23 @@ export function RecommendationWizard(props: Props) {
 
       // Apply use case specific filters
       if (useCase() === 'developer') {
-        filters.nips = '50'; // Search support
-      } else if (useCase() === 'creator') {
-        filters.admission = 'open';
+        filters.nips = '50'; // Search support (NIP-50)
       }
 
       const response = await api.getRelays(filters);
+      let filtered = response.relays || [];
 
-      // Sort by uptime
-      const sorted = (response.relays || []).sort(
-        (a, b) => (b.uptime_percent || 0) - (a.uptime_percent || 0)
-      );
+      // Filter by performance preference (client-side)
+      if (performance() === 'fastest') {
+        filtered = filtered.filter(r => r.latency_ms > 0 && r.latency_ms < 200);
+      } else if (performance() === 'balanced') {
+        filtered = filtered.filter(r => r.latency_ms > 0 && r.latency_ms < 500);
+      }
+
+      // Sort by latency (fastest first)
+      const sorted = filtered
+        .filter(r => r.latency_ms > 0) // Only relays with known latency
+        .sort((a, b) => a.latency_ms - b.latency_ms);
 
       setResults(sorted.slice(0, 5));
       setStep(4);
@@ -125,15 +126,14 @@ export function RecommendationWizard(props: Props) {
 
   const useCaseOptions = [
     { value: 'general' as UseCase, label: 'General Use', desc: 'Social, browsing, chatting' },
-    { value: 'developer' as UseCase, label: 'Developer', desc: 'Building apps, need search/APIs' },
+    { value: 'developer' as UseCase, label: 'Developer', desc: 'Need search support (NIP-50)' },
     { value: 'creator' as UseCase, label: 'Content Creator', desc: 'Posting content, need reliability' },
   ];
 
-  const moderationOptions = [
-    { value: 'unmoderated' as Moderation, label: 'Unmoderated', desc: 'Anything goes' },
-    { value: 'light' as Moderation, label: 'Light', desc: 'Minimal rules' },
-    { value: 'active' as Moderation, label: 'Active', desc: 'Community standards enforced' },
-    { value: 'strict' as Moderation, label: 'Strict', desc: 'Heavily moderated' },
+  const performanceOptions = [
+    { value: 'fastest' as Performance, label: 'Fastest', desc: 'Under 200ms latency' },
+    { value: 'balanced' as Performance, label: 'Balanced', desc: 'Under 500ms latency' },
+    { value: 'any' as Performance, label: 'Any Speed', desc: 'No preference' },
   ];
 
   const paymentOptions = [
@@ -182,13 +182,13 @@ export function RecommendationWizard(props: Props) {
             </Show>
 
             <Show when={step() === 2}>
-              <p class="wizard-question">What level of content moderation do you prefer?</p>
+              <p class="wizard-question">What performance level do you need?</p>
               <div class="wizard-options">
-                <For each={moderationOptions}>
+                <For each={performanceOptions}>
                   {(option) => (
                     <button
-                      class={`wizard-option ${moderation() === option.value ? 'selected' : ''}`}
-                      onClick={() => setModeration(option.value)}
+                      class={`wizard-option ${performance() === option.value ? 'selected' : ''}`}
+                      onClick={() => setPerformance(option.value)}
                     >
                       <span class="option-label">{option.label}</span>
                       <span class="option-desc">{option.desc}</span>
@@ -237,9 +237,16 @@ export function RecommendationWizard(props: Props) {
                             <p class="wizard-relay-desc">{relay.description}</p>
                           </Show>
                           <div class="wizard-relay-meta">
-                            <span>{relay.uptime_percent?.toFixed(0) || '?'}% uptime</span>
-                            <span>{relay.latency_ms || '?'}ms</span>
-                            <span class="tag tag-moderation">{relay.moderation}</span>
+                            <span>{relay.latency_ms}ms latency</span>
+                            <Show when={relay.payment_required}>
+                              <span class="tag">Paid</span>
+                            </Show>
+                            <Show when={!relay.payment_required}>
+                              <span class="tag">Free</span>
+                            </Show>
+                            <Show when={relay.supported_nips?.includes(50)}>
+                              <span class="tag">Search</span>
+                            </Show>
                           </div>
                         </div>
                         <div class="wizard-relay-action">

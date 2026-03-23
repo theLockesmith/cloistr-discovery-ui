@@ -168,13 +168,31 @@ export function RelayMap(props: Props) {
 
       <Show when={!loading() && !error() && relays().length > 0 && !hasGeoData()}>
         <div class="map-no-geo">
-          Geographic data not available for relays.
+          <strong>Geographic data not available</strong>
           <br />
-          <span class="map-no-geo-hint">Relay location data will be added in a future update.</span>
+          <span class="map-no-geo-hint">
+            Relay location data is being collected and will be available soon.
+          </span>
         </div>
       </Show>
 
-      <div ref={mapContainer} class="relay-map" />
+      <Show when={!loading() && !error() && relays().length === 0}>
+        <div class="map-no-geo">
+          <strong>No relays found</strong>
+          <br />
+          <span class="map-no-geo-hint">
+            Try adjusting your filters to see relays on the map.
+          </span>
+        </div>
+      </Show>
+
+      <div
+        ref={mapContainer}
+        class="relay-map"
+        style={{
+          display: !loading() && !error() && (relays().length === 0 || !hasGeoData()) ? 'none' : 'block'
+        }}
+      />
 
       <Show when={selectedCountry()}>
         <div class="map-panel">
