@@ -10,7 +10,7 @@ interface RelayListProps {
   maxSelection?: number;
 }
 
-type SortField = 'latency_ms' | 'name' | 'health';
+type SortField = 'latency_ms' | 'uptime_percent' | 'health' | 'name';
 type SortOrder = 'asc' | 'desc';
 
 export function RelayList(props: RelayListProps) {
@@ -51,6 +51,16 @@ export function RelayList(props: RelayListProps) {
         const aHealth = healthOrder[a.health] ?? 3;
         const bHealth = healthOrder[b.health] ?? 3;
         return order === 'asc' ? aHealth - bHealth : bHealth - aHealth;
+      }
+
+      // Handle uptime_percent - null values sort to end
+      if (field === 'uptime_percent') {
+        const aUptime = a.uptime_percent ?? -1;
+        const bUptime = b.uptime_percent ?? -1;
+        if (aUptime === -1 && bUptime === -1) return 0;
+        if (aUptime === -1) return 1; // nulls to end
+        if (bUptime === -1) return -1; // nulls to end
+        return order === 'asc' ? aUptime - bUptime : bUptime - aUptime;
       }
 
       // Handle strings (name field)
@@ -110,6 +120,7 @@ export function RelayList(props: RelayListProps) {
         <div class="sort-controls">
           <span class="sort-label">Sort by:</span>
           <SortButton field="latency_ms" label="Latency" />
+          <SortButton field="uptime_percent" label="Uptime" />
           <SortButton field="health" label="Health" />
           <SortButton field="name" label="Name" />
         </div>
