@@ -1,17 +1,37 @@
 # UI Fixes - 2026-03-23
 
+## Summary
+
+**Status: Feature Complete for v1** (as of 2026-03-24)
+
+All UI issues resolved. Service is fully functional and deployed:
+- ✓ Map display working (with GeoIP data from backend)
+- ✓ Health sorting working (online → degraded → offline)
+- ✓ Uptime sorting working (24h rolling window from backend)
+- ✓ All 4 sort options functional: Latency, Uptime, Health, Name
+- ✓ Recommendation wizard using real backend data
+- ✓ Login modal (NIP-07 + NIP-46)
+- ✓ Relay comparison view
+- ✓ Add to My Relays (NIP-65)
+
+**Deployed:** `37f63eb` on `cloistr-discovery-ui-5875f5ffb9-*` pods in Atlantis cluster
+
+---
+
 ## Issues Addressed
 
 ### 1. Sorting Options Fixed ✓
 **Problem:** Sort options for "Uptime" and "Health" didn't work properly.
 
 **Solution:**
-- **Uptime removed**: Backend returns `uptime_percent: null` for all relays, so this data isn't available
-- **Health restored and fixed**: Now properly sorts by health status (online > degraded > offline)
-- Working sort options: **Latency**, **Health**, **Name**
+- **Uptime**: Re-added in commit `37f63eb` - sorts by uptime_percent (24h rolling window)
+- **Health**: Fixed in commit `f38ede1` - properly sorts by health status (online > degraded > offline)
+- Working sort options: **Latency**, **Uptime**, **Health**, **Name**
 
 **Files Changed:**
 - `src/components/RelayList.tsx`
+
+**Status:** Both sorting options are deployed and working in production (commit `37f63eb`). Users may need to clear browser cache (Ctrl+Shift+R) to see the latest version.
 
 ---
 
