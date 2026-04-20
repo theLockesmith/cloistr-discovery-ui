@@ -1,4 +1,4 @@
-import { createSignal, createEffect, onMount, onCleanup, Show, For } from 'solid-js';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { api } from '../lib/api';
@@ -17,23 +17,23 @@ interface CountryGroup {
   relays: Relay[];
 }
 
-export function RelayMap(props: Props) {
+export function RelayMap({ filters }: Props) {
   const auth = useAuth();
-  let mapContainer: HTMLDivElement | undefined;
-  let map: L.Map | undefined;
-  let markersLayer: L.LayerGroup | undefined;
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<L.Map | null>(null);
+  const markersLayerRef = useRef<L.LayerGroup | null>(null);
 
-  const [relays, setRelays] = createSignal<Relay[]>([]);
-  const [loading, setLoading] = createSignal(false);
-  const [error, setError] = createSignal<string | null>(null);
-  const [selectedCountry, setSelectedCountry] = createSignal<CountryGroup | null>(null);
-  const [addingRelay, setAddingRelay] = createSignal<string | null>(null);
+  const [relays, setRelays] = useState<Relay[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedCountry, setSelectedCountry] = useState<CountryGroup | null>(null);
+  const [addingRelay, setAddingRelay] = useState<string | null>(null);
 
   // Group relays by country (skip relays without country_code)
-  const countryGroups = (): CountryGroup[] => {
+  const countryGroups = useMemo((): CountryGroup[] => {
     const groups: Record<string, CountryGroup> = {};
 
-    for (const relay of relays()) {
+    for (const relay of relays) {
       const code = relay.country_code;
       if (!code) continue; // Skip relays without geo data
 
@@ -52,16 +52,16 @@ export function RelayMap(props: Props) {
     }
 
     return Object.values(groups);
-  };
+  }, [relays]);
 
   // Check if any relays have geo data
-  const hasGeoData = () => countryGroups().length > 0;
+  const hasGeoData = countryGroups.length > 0;
 
   // Initialize map
-  onMount(() => {
-    if (!mapContainer) return;
+  useEffect(() => {
+    if (!mapContainerRef.current) return;
 
-    map = L.map(mapContainer, {
+    const map = L.map(mapContainerRef.current, {
       center: [20, 0],
       zoom: 2,
       minZoom: 2,
@@ -76,40 +76,53 @@ export function RelayMap(props: Props) {
       maxZoom: 19,
     }).addTo(map);
 
-    markersLayer = L.layerGroup().addTo(map);
-  });
+    markersLayerRef.current = L.layerGroup().addTo(map);
+    mapRef.current = map;
 
-  onCleanup(() => {
-    if (map) {
+    return () => {
       map.remove();
-      map = undefined;
-    }
-  });
+      mapRef.current = null;
+    };
+  }, []);
 
   // Fetch relays when filters change
-  createEffect(async () => {
-    const filters = props.filters;
-    setLoading(true);
-    setError(null);
+  useEffect(() => {
+    let cancelled = false;
 
-    try {
-      const response = await api.getRelays({ ...filters, limit: 200 });
-      setRelays(response.relays || []);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load relays');
-    } finally {
-      setLoading(false);
+    async function fetchRelays() {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const response = await api.getRelays({ ...filters, limit: 200 });
+        if (!cancelled) {
+          setRelays(response.relays || []);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : 'Failed to load relays');
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
     }
-  });
+
+    fetchRelays();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [filters]);
 
   // Update markers when relays change
-  createEffect(() => {
-    if (!map || !markersLayer) return;
+  useEffect(() => {
+    if (!mapRef.current || !markersLayerRef.current) return;
 
-    markersLayer.clearLayers();
-    const groups = countryGroups();
+    markersLayerRef.current.clearLayers();
 
-    for (const group of groups) {
+    for (const group of countryGroups) {
       const count = group.relays.length;
       const onlineCount = group.relays.filter(r => r.health === 'online').length;
 
@@ -132,12 +145,12 @@ export function RelayMap(props: Props) {
         className: 'relay-tooltip',
       });
 
-      markersLayer.addLayer(marker);
+      markersLayerRef.current!.addLayer(marker);
     }
-  });
+  }, [countryGroups]);
 
   const handleAddRelay = async (url: string) => {
-    if (!auth.state().pubkey) return;
+    if (!auth.state.pubkey) return;
 
     setAddingRelay(url);
     try {
@@ -154,95 +167,93 @@ export function RelayMap(props: Props) {
   };
 
   return (
-    <div class="relay-map-container">
-      <Show when={loading()}>
-        <div class="map-loading">
-          <div class="spinner" />
+    <div className="relay-map-container">
+      {loading && (
+        <div className="map-loading">
+          <div className="spinner" />
           <span>Loading relays...</span>
         </div>
-      </Show>
+      )}
 
-      <Show when={error()}>
-        <div class="map-error">{error()}</div>
-      </Show>
+      {error && (
+        <div className="map-error">{error}</div>
+      )}
 
-      <Show when={!loading() && !error() && relays().length > 0 && !hasGeoData()}>
-        <div class="map-no-geo">
+      {!loading && !error && relays.length > 0 && !hasGeoData && (
+        <div className="map-no-geo">
           <strong>Geographic data not available</strong>
           <br />
-          <span class="map-no-geo-hint">
+          <span className="map-no-geo-hint">
             Relay location data is being collected and will be available soon.
           </span>
         </div>
-      </Show>
+      )}
 
-      <Show when={!loading() && !error() && relays().length === 0}>
-        <div class="map-no-geo">
+      {!loading && !error && relays.length === 0 && (
+        <div className="map-no-geo">
           <strong>No relays found</strong>
           <br />
-          <span class="map-no-geo-hint">
+          <span className="map-no-geo-hint">
             Try adjusting your filters to see relays on the map.
           </span>
         </div>
-      </Show>
+      )}
 
-      <div ref={mapContainer} class="relay-map" />
+      <div ref={mapContainerRef} className="relay-map" />
 
-      <Show when={selectedCountry()}>
-        <div class="map-panel">
-          <div class="map-panel-header">
-            <h3>{selectedCountry()!.name}</h3>
-            <span class="map-panel-count">
-              {selectedCountry()!.relays.length} relay{selectedCountry()!.relays.length !== 1 ? 's' : ''}
+      {selectedCountry && (
+        <div className="map-panel">
+          <div className="map-panel-header">
+            <h3>{selectedCountry.name}</h3>
+            <span className="map-panel-count">
+              {selectedCountry.relays.length} relay{selectedCountry.relays.length !== 1 ? 's' : ''}
             </span>
-            <button class="map-panel-close" onClick={closePanel}>&times;</button>
+            <button className="map-panel-close" onClick={closePanel}>&times;</button>
           </div>
-          <div class="map-panel-content">
-            <For each={selectedCountry()!.relays}>
-              {(relay) => (
-                <div class="map-relay">
-                  <div class="map-relay-header">
-                    <span class={`health-dot health-${relay.health}`} />
-                    <strong>{relay.name || relay.url}</strong>
-                  </div>
-                  <span class="map-relay-url">{relay.url}</span>
-                  <div class="map-relay-meta">
-                    <span>{relay.latency_ms || '?'}ms</span>
-                    <span>{relay.uptime_percent?.toFixed(0) || '?'}% up</span>
-                  </div>
-                  <div class="map-relay-action">
-                    <Show when={auth.state().pubkey} fallback={
-                      <span class="map-login-hint">Login to add</span>
-                    }>
-                      <Show when={auth.hasRelay(relay.url)} fallback={
-                        <button
-                          class="btn btn-add btn-sm"
-                          onClick={() => handleAddRelay(relay.url)}
-                          disabled={addingRelay() === relay.url}
-                        >
-                          {addingRelay() === relay.url ? '...' : 'Add'}
-                        </button>
-                      }>
-                        <span class="map-added">Added</span>
-                      </Show>
-                    </Show>
-                  </div>
+          <div className="map-panel-content">
+            {selectedCountry.relays.map((relay) => (
+              <div key={relay.url} className="map-relay">
+                <div className="map-relay-header">
+                  <span className={`health-dot health-${relay.health}`} />
+                  <strong>{relay.name || relay.url}</strong>
                 </div>
-              )}
-            </For>
+                <span className="map-relay-url">{relay.url}</span>
+                <div className="map-relay-meta">
+                  <span>{relay.latency_ms || '?'}ms</span>
+                  <span>{relay.uptime_percent?.toFixed(0) || '?'}% up</span>
+                </div>
+                <div className="map-relay-action">
+                  {auth.state.pubkey ? (
+                    auth.hasRelay(relay.url) ? (
+                      <span className="map-added">Added</span>
+                    ) : (
+                      <button
+                        className="btn btn-add btn-sm"
+                        onClick={() => handleAddRelay(relay.url)}
+                        disabled={addingRelay === relay.url}
+                      >
+                        {addingRelay === relay.url ? '...' : 'Add'}
+                      </button>
+                    )
+                  ) : (
+                    <span className="map-login-hint">Login to add</span>
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
-      </Show>
+      )}
 
-      <div class="map-legend">
-        <div class="map-legend-item">
-          <span class="health-dot health-online" /> Online
+      <div className="map-legend">
+        <div className="map-legend-item">
+          <span className="health-dot health-online" /> Online
         </div>
-        <div class="map-legend-item">
-          <span class="health-dot health-degraded" /> Degraded
+        <div className="map-legend-item">
+          <span className="health-dot health-degraded" /> Degraded
         </div>
-        <div class="map-legend-item">
-          <span class="health-dot health-offline" /> Offline
+        <div className="map-legend-item">
+          <span className="health-dot health-offline" /> Offline
         </div>
       </div>
     </div>

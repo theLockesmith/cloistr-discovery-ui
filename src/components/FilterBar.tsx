@@ -1,4 +1,4 @@
-import { createSignal, For, Show } from 'solid-js';
+import { useState } from 'react';
 import type { RelayFilters } from '../lib/types';
 
 interface FilterBarProps {
@@ -24,22 +24,22 @@ const POPULAR_NIPS = [
   { nip: 57, label: 'Zaps' },
 ];
 
-export function FilterBar(props: FilterBarProps) {
-  const [showAdvanced, setShowAdvanced] = createSignal(false);
-  const [searchText, setSearchText] = createSignal('');
+export function FilterBar({ filters, onFilterChange }: FilterBarProps) {
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [searchText, setSearchText] = useState('');
 
   const updateFilter = (key: keyof RelayFilters, value: string | undefined) => {
-    const newFilters = { ...props.filters };
+    const newFilters = { ...filters };
     if (value === undefined || value === '') {
       delete newFilters[key];
     } else {
       (newFilters as Record<string, unknown>)[key] = value;
     }
-    props.onFilterChange(newFilters);
+    onFilterChange(newFilters);
   };
 
   const toggleTopic = (topic: string) => {
-    const current = props.filters.topic?.split(',').filter(Boolean) || [];
+    const current = filters.topic?.split(',').filter(Boolean) || [];
     const index = current.indexOf(topic);
 
     if (index >= 0) {
@@ -52,7 +52,7 @@ export function FilterBar(props: FilterBarProps) {
   };
 
   const toggleNip = (nip: number) => {
-    const current = props.filters.nips?.split(',').filter(Boolean) || [];
+    const current = filters.nips?.split(',').filter(Boolean) || [];
     const nipStr = String(nip);
     const index = current.indexOf(nipStr);
 
@@ -66,149 +66,146 @@ export function FilterBar(props: FilterBarProps) {
   };
 
   const isTopicActive = (topic: string) => {
-    const topics = props.filters.topic?.split(',') || [];
+    const topics = filters.topic?.split(',') || [];
     return topics.includes(topic);
   };
 
   const isNipActive = (nip: number) => {
-    const nips = props.filters.nips?.split(',') || [];
+    const nips = filters.nips?.split(',') || [];
     return nips.includes(String(nip));
   };
 
   const clearFilters = () => {
-    props.onFilterChange({});
+    onFilterChange({});
     setSearchText('');
   };
 
   const hasActiveFilters = () => {
-    return Object.keys(props.filters).length > 0;
+    return Object.keys(filters).length > 0;
   };
 
   return (
-    <div class="filter-bar">
+    <div className="filter-bar">
       {/* Search box */}
-      <div class="search-box">
+      <div className="search-box">
         <input
           type="text"
           placeholder="Search relays..."
-          value={searchText()}
-          onInput={(e) => {
-            setSearchText(e.currentTarget.value);
-            updateFilter('search', e.currentTarget.value || undefined);
+          value={searchText}
+          onChange={(e) => {
+            setSearchText(e.target.value);
+            updateFilter('search', e.target.value || undefined);
           }}
         />
-        <Show when={hasActiveFilters()}>
-          <button class="clear-btn" onClick={clearFilters}>
+        {hasActiveFilters() && (
+          <button className="clear-btn" onClick={clearFilters}>
             Clear all
           </button>
-        </Show>
+        )}
       </div>
 
       {/* Health filter chips */}
-      <div class="filter-section">
-        <span class="filter-label">Health:</span>
-        <div class="filter-chips">
-          <For each={HEALTH_OPTIONS}>
-            {option => (
-              <button
-                class={`chip ${props.filters.health === option ? 'active' : ''}`}
-                onClick={() => updateFilter('health', props.filters.health === option ? undefined : option)}
-              >
-                <span class={`health-indicator health-${option}`} />
-                {option}
-              </button>
-            )}
-          </For>
+      <div className="filter-section">
+        <span className="filter-label">Health:</span>
+        <div className="filter-chips">
+          {HEALTH_OPTIONS.map(option => (
+            <button
+              key={option}
+              className={`chip ${filters.health === option ? 'active' : ''}`}
+              onClick={() => updateFilter('health', filters.health === option ? undefined : option)}
+            >
+              <span className={`health-indicator health-${option}`} />
+              {option}
+            </button>
+          ))}
         </div>
       </div>
 
       {/* Topic chips */}
-      <div class="filter-section">
-        <span class="filter-label">Topics:</span>
-        <div class="filter-chips">
-          <For each={POPULAR_TOPICS}>
-            {topic => (
-              <button
-                class={`chip ${isTopicActive(topic) ? 'active' : ''}`}
-                onClick={() => toggleTopic(topic)}
-              >
-                {topic}
-              </button>
-            )}
-          </For>
+      <div className="filter-section">
+        <span className="filter-label">Topics:</span>
+        <div className="filter-chips">
+          {POPULAR_TOPICS.map(topic => (
+            <button
+              key={topic}
+              className={`chip ${isTopicActive(topic) ? 'active' : ''}`}
+              onClick={() => toggleTopic(topic)}
+            >
+              {topic}
+            </button>
+          ))}
         </div>
       </div>
 
       {/* NIP chips */}
-      <div class="filter-section">
-        <span class="filter-label">Features:</span>
-        <div class="filter-chips">
-          <For each={POPULAR_NIPS}>
-            {({ nip, label }) => (
-              <button
-                class={`chip ${isNipActive(nip) ? 'active' : ''}`}
-                onClick={() => toggleNip(nip)}
-              >
-                NIP-{nip} ({label})
-              </button>
-            )}
-          </For>
+      <div className="filter-section">
+        <span className="filter-label">Features:</span>
+        <div className="filter-chips">
+          {POPULAR_NIPS.map(({ nip, label }) => (
+            <button
+              key={nip}
+              className={`chip ${isNipActive(nip) ? 'active' : ''}`}
+              onClick={() => toggleNip(nip)}
+            >
+              NIP-{nip} ({label})
+            </button>
+          ))}
         </div>
       </div>
 
       {/* Advanced filters toggle */}
       <button
-        class="advanced-toggle"
-        onClick={() => setShowAdvanced(!showAdvanced())}
+        className="advanced-toggle"
+        onClick={() => setShowAdvanced(!showAdvanced)}
       >
-        {showAdvanced() ? 'Hide' : 'Show'} advanced filters
+        {showAdvanced ? 'Hide' : 'Show'} advanced filters
       </button>
 
       {/* Advanced filters */}
-      <Show when={showAdvanced()}>
-        <div class="advanced-filters">
-          <div class="filter-row">
+      {showAdvanced && (
+        <div className="advanced-filters">
+          <div className="filter-row">
             <label>
               Moderation:
               <select
-                value={props.filters.moderation || ''}
-                onChange={(e) => updateFilter('moderation', e.currentTarget.value || undefined)}
+                value={filters.moderation || ''}
+                onChange={(e) => updateFilter('moderation', e.target.value || undefined)}
               >
                 <option value="">Any</option>
-                <For each={MODERATION_OPTIONS}>
-                  {option => <option value={option}>{option}</option>}
-                </For>
+                {MODERATION_OPTIONS.map(option => (
+                  <option key={option} value={option}>{option}</option>
+                ))}
               </select>
             </label>
 
             <label>
               Content Policy:
               <select
-                value={props.filters.content_policy || ''}
-                onChange={(e) => updateFilter('content_policy', e.currentTarget.value || undefined)}
+                value={filters.content_policy || ''}
+                onChange={(e) => updateFilter('content_policy', e.target.value || undefined)}
               >
                 <option value="">Any</option>
-                <For each={CONTENT_POLICY_OPTIONS}>
-                  {option => <option value={option}>{option}</option>}
-                </For>
+                {CONTENT_POLICY_OPTIONS.map(option => (
+                  <option key={option} value={option}>{option}</option>
+                ))}
               </select>
             </label>
 
             <label>
               Payment:
               <select
-                value={props.filters.payment || ''}
-                onChange={(e) => updateFilter('payment', e.currentTarget.value || undefined)}
+                value={filters.payment || ''}
+                onChange={(e) => updateFilter('payment', e.target.value || undefined)}
               >
                 <option value="">Any</option>
-                <For each={PAYMENT_OPTIONS}>
-                  {option => <option value={option}>{option}</option>}
-                </For>
+                {PAYMENT_OPTIONS.map(option => (
+                  <option key={option} value={option}>{option}</option>
+                ))}
               </select>
             </label>
           </div>
         </div>
-      </Show>
+      )}
     </div>
   );
 }

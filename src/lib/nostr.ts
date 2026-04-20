@@ -1,4 +1,4 @@
-import { createSignal, createContext, useContext } from 'solid-js';
+import { createContext, useContext, useState, useCallback, useMemo } from 'react';
 import { SimplePool, type Event, type EventTemplate, generateSecretKey } from 'nostr-tools';
 import { BunkerSigner, parseBunkerInput } from 'nostr-tools/nip46';
 import type { AuthState, UserRelay } from './types';
@@ -37,18 +37,21 @@ class Nip07Signer implements Signer {
   }
 }
 
-// Auth context
-const AuthContext = createContext<{
-  state: () => AuthState;
+// Auth context value type
+interface AuthContextValue {
+  state: AuthState;
   login: () => Promise<void>;
   loginNip46: (bunkerInput: string) => Promise<void>;
   logout: () => void;
   addRelay: (url: string, read?: boolean, write?: boolean) => Promise<void>;
   removeRelay: (url: string) => Promise<void>;
   hasRelay: (url: string) => boolean;
-  isLoading: () => boolean;
+  isLoading: boolean;
   hasNip07: () => boolean;
-}>();
+}
+
+// Auth context
+const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function useAuth() {
   const context = useContext(AuthContext);
@@ -66,111 +69,28 @@ const DEFAULT_RELAYS = [
   'wss://relay.nostr.band',
 ];
 
+// Pool singleton
+const pool = new SimplePool();
+
+// Module-level state for signers (persists across renders)
+let currentSigner: Signer | null = null;
+let bunkerSignerInstance: BunkerSigner | null = null;
+
 export function createAuthStore() {
-  const [state, setState] = createSignal<AuthState>({
+  const [state, setState] = useState<AuthState>({
     pubkey: null,
     method: null,
     relayList: [],
   });
-  const [isLoading, setIsLoading] = createSignal(false);
-
-  const pool = new SimplePool();
-
-  // Current signer (NIP-07 or NIP-46)
-  let currentSigner: Signer | null = null;
-  let bunkerSigner: BunkerSigner | null = null;
+  const [isLoading, setIsLoading] = useState(false);
 
   // Check if NIP-07 extension is available
-  function hasNip07(): boolean {
+  const hasNip07 = useCallback((): boolean => {
     return typeof window !== 'undefined' && !!window.nostr;
-  }
-
-  // Login with NIP-07
-  async function login(): Promise<void> {
-    if (!hasNip07()) {
-      throw new Error('No Nostr extension found. Please install nos2x, Alby, or similar.');
-    }
-
-    setIsLoading(true);
-    try {
-      currentSigner = new Nip07Signer();
-      const pubkey = await currentSigner.getPublicKey();
-
-      // Fetch user's relay list (kind 10002)
-      const relayList = await fetchRelayList(pubkey);
-
-      setState({
-        pubkey,
-        method: 'nip07',
-        relayList,
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  }
-
-  // Login with NIP-46 (remote signer)
-  async function loginNip46(bunkerInput: string): Promise<void> {
-    setIsLoading(true);
-    try {
-      // Parse bunker:// URL or NIP-05 identifier
-      const bp = await parseBunkerInput(bunkerInput);
-      if (!bp) {
-        throw new Error('Invalid bunker URL or NIP-05 identifier');
-      }
-
-      // Generate a client secret key for this session
-      const clientSecretKey = generateSecretKey();
-
-      // Create the bunker signer
-      bunkerSigner = BunkerSigner.fromBunker(clientSecretKey, bp, { pool });
-
-      // Connect to the bunker
-      await bunkerSigner.connect();
-
-      // Get the public key
-      const pubkey = await bunkerSigner.getPublicKey();
-
-      currentSigner = bunkerSigner;
-
-      // Fetch user's relay list (kind 10002)
-      const relayList = await fetchRelayList(pubkey);
-
-      setState({
-        pubkey,
-        method: 'nip46',
-        relayList,
-      });
-    } catch (err) {
-      // Clean up on error
-      if (bunkerSigner) {
-        await bunkerSigner.close().catch(() => {});
-        bunkerSigner = null;
-      }
-      currentSigner = null;
-      throw err;
-    } finally {
-      setIsLoading(false);
-    }
-  }
-
-  async function logout(): Promise<void> {
-    // Clean up NIP-46 connection if active
-    if (bunkerSigner) {
-      await bunkerSigner.close().catch(() => {});
-      bunkerSigner = null;
-    }
-    currentSigner = null;
-
-    setState({
-      pubkey: null,
-      method: null,
-      relayList: [],
-    });
-  }
+  }, []);
 
   // Fetch kind 10002 (NIP-65 relay list)
-  async function fetchRelayList(pubkey: string): Promise<UserRelay[]> {
+  const fetchRelayList = useCallback(async (pubkey: string): Promise<UserRelay[]> => {
     const events = await pool.querySync(DEFAULT_RELAYS, {
       kinds: [10002],
       authors: [pubkey],
@@ -198,48 +118,10 @@ export function createAuthStore() {
     }
 
     return relays;
-  }
-
-  // Add relay to user's list
-  async function addRelay(url: string, read = true, write = true): Promise<void> {
-    const currentState = state();
-    if (!currentState.pubkey || !currentSigner) {
-      throw new Error('Not logged in');
-    }
-
-    // Check if already in list
-    if (currentState.relayList.some(r => r.url === url)) {
-      return;
-    }
-
-    // Add to local state
-    const newRelayList = [...currentState.relayList, { url, read, write }];
-    setState(s => ({ ...s, relayList: newRelayList }));
-
-    // Publish updated kind 10002
-    await publishRelayList(newRelayList);
-  }
-
-  // Remove relay from user's list
-  async function removeRelay(url: string): Promise<void> {
-    const currentState = state();
-    if (!currentState.pubkey || !currentSigner) {
-      throw new Error('Not logged in');
-    }
-
-    const newRelayList = currentState.relayList.filter(r => r.url !== url);
-    setState(s => ({ ...s, relayList: newRelayList }));
-
-    await publishRelayList(newRelayList);
-  }
-
-  // Check if relay is in user's list
-  function hasRelay(url: string): boolean {
-    return state().relayList.some(r => r.url === url);
-  }
+  }, []);
 
   // Publish kind 10002 event
-  async function publishRelayList(relays: UserRelay[]): Promise<void> {
+  const publishRelayList = useCallback(async (relays: UserRelay[]): Promise<void> => {
     if (!currentSigner) {
       throw new Error('Not logged in');
     }
@@ -267,9 +149,129 @@ export function createAuthStore() {
     await Promise.allSettled(
       DEFAULT_RELAYS.map(relay => pool.publish([relay], signedEvent as Event))
     );
-  }
+  }, []);
 
-  return {
+  // Login with NIP-07
+  const login = useCallback(async (): Promise<void> => {
+    if (!hasNip07()) {
+      throw new Error('No Nostr extension found. Please install nos2x, Alby, or similar.');
+    }
+
+    setIsLoading(true);
+    try {
+      currentSigner = new Nip07Signer();
+      const pubkey = await currentSigner.getPublicKey();
+
+      // Fetch user's relay list (kind 10002)
+      const relayList = await fetchRelayList(pubkey);
+
+      setState({
+        pubkey,
+        method: 'nip07',
+        relayList,
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [hasNip07, fetchRelayList]);
+
+  // Login with NIP-46 (remote signer)
+  const loginNip46 = useCallback(async (bunkerInput: string): Promise<void> => {
+    setIsLoading(true);
+    try {
+      // Parse bunker:// URL or NIP-05 identifier
+      const bp = await parseBunkerInput(bunkerInput);
+      if (!bp) {
+        throw new Error('Invalid bunker URL or NIP-05 identifier');
+      }
+
+      // Generate a client secret key for this session
+      const clientSecretKey = generateSecretKey();
+
+      // Create the bunker signer
+      bunkerSignerInstance = BunkerSigner.fromBunker(clientSecretKey, bp, { pool });
+
+      // Connect to the bunker
+      await bunkerSignerInstance.connect();
+
+      // Get the public key
+      const pubkey = await bunkerSignerInstance.getPublicKey();
+
+      currentSigner = bunkerSignerInstance;
+
+      // Fetch user's relay list (kind 10002)
+      const relayList = await fetchRelayList(pubkey);
+
+      setState({
+        pubkey,
+        method: 'nip46',
+        relayList,
+      });
+    } catch (err) {
+      // Clean up on error
+      if (bunkerSignerInstance) {
+        await bunkerSignerInstance.close().catch(() => {});
+        bunkerSignerInstance = null;
+      }
+      currentSigner = null;
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [fetchRelayList]);
+
+  const logout = useCallback(async (): Promise<void> => {
+    // Clean up NIP-46 connection if active
+    if (bunkerSignerInstance) {
+      await bunkerSignerInstance.close().catch(() => {});
+      bunkerSignerInstance = null;
+    }
+    currentSigner = null;
+
+    setState({
+      pubkey: null,
+      method: null,
+      relayList: [],
+    });
+  }, []);
+
+  // Add relay to user's list
+  const addRelay = useCallback(async (url: string, read = true, write = true): Promise<void> => {
+    if (!state.pubkey || !currentSigner) {
+      throw new Error('Not logged in');
+    }
+
+    // Check if already in list
+    if (state.relayList.some(r => r.url === url)) {
+      return;
+    }
+
+    // Add to local state
+    const newRelayList = [...state.relayList, { url, read, write }];
+    setState(s => ({ ...s, relayList: newRelayList }));
+
+    // Publish updated kind 10002
+    await publishRelayList(newRelayList);
+  }, [state.pubkey, state.relayList, publishRelayList]);
+
+  // Remove relay from user's list
+  const removeRelay = useCallback(async (url: string): Promise<void> => {
+    if (!state.pubkey || !currentSigner) {
+      throw new Error('Not logged in');
+    }
+
+    const newRelayList = state.relayList.filter(r => r.url !== url);
+    setState(s => ({ ...s, relayList: newRelayList }));
+
+    await publishRelayList(newRelayList);
+  }, [state.pubkey, state.relayList, publishRelayList]);
+
+  // Check if relay is in user's list
+  const hasRelay = useCallback((url: string): boolean => {
+    return state.relayList.some(r => r.url === url);
+  }, [state.relayList]);
+
+  const value = useMemo<AuthContextValue>(() => ({
     state,
     login,
     loginNip46,
@@ -279,7 +281,9 @@ export function createAuthStore() {
     hasRelay,
     isLoading,
     hasNip07,
-  };
+  }), [state, login, loginNip46, logout, addRelay, removeRelay, hasRelay, isLoading, hasNip07]);
+
+  return value;
 }
 
 export { AuthContext };

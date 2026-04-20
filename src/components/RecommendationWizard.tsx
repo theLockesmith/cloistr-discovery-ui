@@ -1,4 +1,4 @@
-import { createSignal, Show, For } from 'solid-js';
+import { useState } from 'react';
 import { api } from '../lib/api';
 import { useAuth } from '../lib/nostr';
 import type { Relay } from '../lib/types';
@@ -12,16 +12,16 @@ interface Props {
   onClose: () => void;
 }
 
-export function RecommendationWizard(props: Props) {
+export function RecommendationWizard({ isOpen, onClose }: Props) {
   const auth = useAuth();
-  const [step, setStep] = createSignal(1);
-  const [useCase, setUseCase] = createSignal<UseCase | null>(null);
-  const [performance, setPerformance] = createSignal<Performance | null>(null);
-  const [payment, setPayment] = createSignal<Payment | null>(null);
-  const [results, setResults] = createSignal<Relay[]>([]);
-  const [loading, setLoading] = createSignal(false);
-  const [error, setError] = createSignal<string | null>(null);
-  const [addingRelay, setAddingRelay] = createSignal<string | null>(null);
+  const [step, setStep] = useState(1);
+  const [useCase, setUseCase] = useState<UseCase | null>(null);
+  const [performance, setPerformance] = useState<Performance | null>(null);
+  const [payment, setPayment] = useState<Payment | null>(null);
+  const [results, setResults] = useState<Relay[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [addingRelay, setAddingRelay] = useState<string | null>(null);
 
   const reset = () => {
     setStep(1);
@@ -34,19 +34,19 @@ export function RecommendationWizard(props: Props) {
 
   const handleClose = () => {
     reset();
-    props.onClose();
+    onClose();
   };
 
-  const handleBackdropClick = (e: MouseEvent) => {
+  const handleBackdropClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) {
       handleClose();
     }
   };
 
   const canProceed = () => {
-    if (step() === 1) return useCase() !== null;
-    if (step() === 2) return performance() !== null;
-    if (step() === 3) return payment() !== null;
+    if (step === 1) return useCase !== null;
+    if (step === 2) return performance !== null;
+    if (step === 3) return payment !== null;
     return false;
   };
 
@@ -61,15 +61,15 @@ export function RecommendationWizard(props: Props) {
       };
 
       // Apply payment filter
-      if (payment() === 'free') {
+      if (payment === 'free') {
         filters.payment = 'free';
-      } else if (payment() === 'paid') {
+      } else if (payment === 'paid') {
         filters.payment = 'paid';
       }
       // 'any' means no filter
 
       // Apply use case specific filters
-      if (useCase() === 'developer') {
+      if (useCase === 'developer') {
         filters.nips = '50'; // Search support (NIP-50)
       }
 
@@ -77,9 +77,9 @@ export function RecommendationWizard(props: Props) {
       let filtered = response.relays || [];
 
       // Filter by performance preference (client-side)
-      if (performance() === 'fastest') {
+      if (performance === 'fastest') {
         filtered = filtered.filter(r => r.latency_ms > 0 && r.latency_ms < 200);
-      } else if (performance() === 'balanced') {
+      } else if (performance === 'balanced') {
         filtered = filtered.filter(r => r.latency_ms > 0 && r.latency_ms < 500);
       }
 
@@ -98,21 +98,21 @@ export function RecommendationWizard(props: Props) {
   };
 
   const handleNext = () => {
-    if (step() < 3) {
-      setStep(step() + 1);
-    } else if (step() === 3) {
+    if (step < 3) {
+      setStep(step + 1);
+    } else if (step === 3) {
       fetchRecommendations();
     }
   };
 
   const handleBack = () => {
-    if (step() > 1) {
-      setStep(step() - 1);
+    if (step > 1) {
+      setStep(step - 1);
     }
   };
 
   const handleAddRelay = async (url: string) => {
-    if (!auth.state().pubkey) return;
+    if (!auth.state.pubkey) return;
 
     setAddingRelay(url);
     try {
@@ -142,171 +142,172 @@ export function RecommendationWizard(props: Props) {
     { value: 'paid' as Payment, label: 'Prefer Paid', desc: 'Often higher quality' },
   ];
 
+  if (!isOpen) return null;
+
   return (
-    <Show when={props.isOpen}>
-      <div class="wizard-overlay" onClick={handleBackdropClick}>
-        <div class="wizard-modal">
-          <div class="wizard-header">
-            <h2>Find Your Relays</h2>
-            <button class="wizard-close" onClick={handleClose}>&times;</button>
+    <div className="wizard-overlay" onClick={handleBackdropClick}>
+      <div className="wizard-modal">
+        <div className="wizard-header">
+          <h2>Find Your Relays</h2>
+          <button className="wizard-close" onClick={handleClose}>&times;</button>
+        </div>
+
+        {step < 4 && (
+          <div className="wizard-progress">
+            {[1, 2, 3].map((n) => (
+              <div
+                key={n}
+                className={`wizard-dot ${n === step ? 'active' : ''} ${n < step ? 'completed' : ''}`}
+              />
+            ))}
           </div>
+        )}
 
-          <Show when={step() < 4}>
-            <div class="wizard-progress">
-              <For each={[1, 2, 3]}>
-                {(n) => (
-                  <div
-                    class={`wizard-dot ${n === step() ? 'active' : ''} ${n < step() ? 'completed' : ''}`}
-                  />
-                )}
-              </For>
-            </div>
-          </Show>
-
-          <div class="wizard-content">
-            <Show when={step() === 1}>
-              <p class="wizard-question">What will you primarily use Nostr for?</p>
-              <div class="wizard-options">
-                <For each={useCaseOptions}>
-                  {(option) => (
-                    <button
-                      class={`wizard-option ${useCase() === option.value ? 'selected' : ''}`}
-                      onClick={() => setUseCase(option.value)}
-                    >
-                      <span class="option-label">{option.label}</span>
-                      <span class="option-desc">{option.desc}</span>
-                    </button>
-                  )}
-                </For>
+        <div className="wizard-content">
+          {step === 1 && (
+            <>
+              <p className="wizard-question">What will you primarily use Nostr for?</p>
+              <div className="wizard-options">
+                {useCaseOptions.map((option) => (
+                  <button
+                    key={option.value}
+                    className={`wizard-option ${useCase === option.value ? 'selected' : ''}`}
+                    onClick={() => setUseCase(option.value)}
+                  >
+                    <span className="option-label">{option.label}</span>
+                    <span className="option-desc">{option.desc}</span>
+                  </button>
+                ))}
               </div>
-            </Show>
+            </>
+          )}
 
-            <Show when={step() === 2}>
-              <p class="wizard-question">What performance level do you need?</p>
-              <div class="wizard-options">
-                <For each={performanceOptions}>
-                  {(option) => (
-                    <button
-                      class={`wizard-option ${performance() === option.value ? 'selected' : ''}`}
-                      onClick={() => setPerformance(option.value)}
-                    >
-                      <span class="option-label">{option.label}</span>
-                      <span class="option-desc">{option.desc}</span>
-                    </button>
-                  )}
-                </For>
+          {step === 2 && (
+            <>
+              <p className="wizard-question">What performance level do you need?</p>
+              <div className="wizard-options">
+                {performanceOptions.map((option) => (
+                  <button
+                    key={option.value}
+                    className={`wizard-option ${performance === option.value ? 'selected' : ''}`}
+                    onClick={() => setPerformance(option.value)}
+                  >
+                    <span className="option-label">{option.label}</span>
+                    <span className="option-desc">{option.desc}</span>
+                  </button>
+                ))}
               </div>
-            </Show>
+            </>
+          )}
 
-            <Show when={step() === 3}>
-              <p class="wizard-question">Are you willing to pay for relay access?</p>
-              <div class="wizard-options">
-                <For each={paymentOptions}>
-                  {(option) => (
-                    <button
-                      class={`wizard-option ${payment() === option.value ? 'selected' : ''}`}
-                      onClick={() => setPayment(option.value)}
-                    >
-                      <span class="option-label">{option.label}</span>
-                      <span class="option-desc">{option.desc}</span>
-                    </button>
-                  )}
-                </For>
+          {step === 3 && (
+            <>
+              <p className="wizard-question">Are you willing to pay for relay access?</p>
+              <div className="wizard-options">
+                {paymentOptions.map((option) => (
+                  <button
+                    key={option.value}
+                    className={`wizard-option ${payment === option.value ? 'selected' : ''}`}
+                    onClick={() => setPayment(option.value)}
+                  >
+                    <span className="option-label">{option.label}</span>
+                    <span className="option-desc">{option.desc}</span>
+                  </button>
+                ))}
               </div>
-            </Show>
+            </>
+          )}
 
-            <Show when={step() === 4}>
-              <Show when={results().length > 0} fallback={
-                <div class="wizard-no-results">
-                  <p>No relays found matching your criteria.</p>
-                  <p>Try adjusting your preferences.</p>
-                </div>
-              }>
-                <p class="wizard-question">Recommended relays for you:</p>
-                <div class="wizard-results">
-                  <For each={results()}>
-                    {(relay) => (
-                      <div class="wizard-relay">
-                        <div class="wizard-relay-info">
-                          <div class="wizard-relay-header">
-                            <span class={`health-dot health-${relay.health}`} />
-                            <strong>{relay.name || relay.url}</strong>
-                          </div>
-                          <span class="wizard-relay-url">{relay.url}</span>
-                          <Show when={relay.description}>
-                            <p class="wizard-relay-desc">{relay.description}</p>
-                          </Show>
-                          <div class="wizard-relay-meta">
-                            <span>{relay.latency_ms}ms latency</span>
-                            <Show when={relay.payment_required}>
-                              <span class="tag">Paid</span>
-                            </Show>
-                            <Show when={!relay.payment_required}>
-                              <span class="tag">Free</span>
-                            </Show>
-                            <Show when={relay.supported_nips?.includes(50)}>
-                              <span class="tag">Search</span>
-                            </Show>
-                          </div>
+          {step === 4 && (
+            results.length > 0 ? (
+              <>
+                <p className="wizard-question">Recommended relays for you:</p>
+                <div className="wizard-results">
+                  {results.map((relay) => (
+                    <div key={relay.url} className="wizard-relay">
+                      <div className="wizard-relay-info">
+                        <div className="wizard-relay-header">
+                          <span className={`health-dot health-${relay.health}`} />
+                          <strong>{relay.name || relay.url}</strong>
                         </div>
-                        <div class="wizard-relay-action">
-                          <Show when={auth.state().pubkey} fallback={
-                            <span class="wizard-login-hint">Login to add</span>
-                          }>
-                            <Show when={auth.hasRelay(relay.url)} fallback={
-                              <button
-                                class="btn btn-add"
-                                onClick={() => handleAddRelay(relay.url)}
-                                disabled={addingRelay() === relay.url}
-                              >
-                                {addingRelay() === relay.url ? 'Adding...' : 'Add'}
-                              </button>
-                            }>
-                              <span class="wizard-added">Added</span>
-                            </Show>
-                          </Show>
+                        <span className="wizard-relay-url">{relay.url}</span>
+                        {relay.description && (
+                          <p className="wizard-relay-desc">{relay.description}</p>
+                        )}
+                        <div className="wizard-relay-meta">
+                          <span>{relay.latency_ms}ms latency</span>
+                          {relay.payment_required ? (
+                            <span className="tag">Paid</span>
+                          ) : (
+                            <span className="tag">Free</span>
+                          )}
+                          {relay.supported_nips?.includes(50) && (
+                            <span className="tag">Search</span>
+                          )}
                         </div>
                       </div>
-                    )}
-                  </For>
+                      <div className="wizard-relay-action">
+                        {auth.state.pubkey ? (
+                          auth.hasRelay(relay.url) ? (
+                            <span className="wizard-added">Added</span>
+                          ) : (
+                            <button
+                              className="btn btn-add"
+                              onClick={() => handleAddRelay(relay.url)}
+                              disabled={addingRelay === relay.url}
+                            >
+                              {addingRelay === relay.url ? 'Adding...' : 'Add'}
+                            </button>
+                          )
+                        ) : (
+                          <span className="wizard-login-hint">Login to add</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              </Show>
-            </Show>
+              </>
+            ) : (
+              <div className="wizard-no-results">
+                <p>No relays found matching your criteria.</p>
+                <p>Try adjusting your preferences.</p>
+              </div>
+            )
+          )}
 
-            <Show when={error()}>
-              <div class="wizard-error">{error()}</div>
-            </Show>
-          </div>
+          {error && (
+            <div className="wizard-error">{error}</div>
+          )}
+        </div>
 
-          <div class="wizard-nav">
-            <Show when={step() > 1 && step() < 4}>
-              <button class="btn btn-back" onClick={handleBack}>
-                Back
-              </button>
-            </Show>
-            <Show when={step() === 4}>
-              <button class="btn btn-back" onClick={reset}>
-                Start Over
-              </button>
-            </Show>
-            <div class="wizard-nav-spacer" />
-            <Show when={step() < 4}>
-              <button
-                class="btn btn-next"
-                onClick={handleNext}
-                disabled={!canProceed() || loading()}
-              >
-                {loading() ? 'Loading...' : step() === 3 ? 'Get Recommendations' : 'Next'}
-              </button>
-            </Show>
-            <Show when={step() === 4}>
-              <button class="btn btn-done" onClick={handleClose}>
-                Done
-              </button>
-            </Show>
-          </div>
+        <div className="wizard-nav">
+          {step > 1 && step < 4 && (
+            <button className="btn btn-back" onClick={handleBack}>
+              Back
+            </button>
+          )}
+          {step === 4 && (
+            <button className="btn btn-back" onClick={reset}>
+              Start Over
+            </button>
+          )}
+          <div className="wizard-nav-spacer" />
+          {step < 4 && (
+            <button
+              className="btn btn-next"
+              onClick={handleNext}
+              disabled={!canProceed() || loading}
+            >
+              {loading ? 'Loading...' : step === 3 ? 'Get Recommendations' : 'Next'}
+            </button>
+          )}
+          {step === 4 && (
+            <button className="btn btn-done" onClick={handleClose}>
+              Done
+            </button>
+          )}
         </div>
       </div>
-    </Show>
+    </div>
   );
 }

@@ -1,4 +1,4 @@
-import { createSignal, Show } from 'solid-js';
+import { useState } from 'react';
 import { AuthContext, createAuthStore } from './lib/nostr';
 import { RelayList, RelayMap, FilterBar, LoginButton, RecommendationWizard, CompareBar, CompareView } from './components';
 import type { Relay, RelayFilters } from './lib/types';
@@ -9,24 +9,24 @@ const MAX_COMPARE = 3;
 
 function App() {
   const auth = createAuthStore();
-  const [filters, setFilters] = createSignal<RelayFilters>({ health: 'online' });
-  const [showWizard, setShowWizard] = createSignal(false);
-  const [viewMode, setViewMode] = createSignal<ViewMode>('list');
-  const [selectedRelays, setSelectedRelays] = createSignal<Relay[]>([]);
-  const [showCompare, setShowCompare] = createSignal(false);
+  const [filters, setFilters] = useState<RelayFilters>({ health: 'online' });
+  const [showWizard, setShowWizard] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>('list');
+  const [selectedRelays, setSelectedRelays] = useState<Relay[]>([]);
+  const [showCompare, setShowCompare] = useState(false);
 
   const handleSelectRelay = (relay: Relay, selected: boolean) => {
     if (selected) {
-      if (selectedRelays().length < MAX_COMPARE) {
-        setSelectedRelays([...selectedRelays(), relay]);
+      if (selectedRelays.length < MAX_COMPARE) {
+        setSelectedRelays([...selectedRelays, relay]);
       }
     } else {
-      setSelectedRelays(selectedRelays().filter(r => r.url !== relay.url));
+      setSelectedRelays(selectedRelays.filter(r => r.url !== relay.url));
     }
   };
 
   const handleRemoveFromCompare = (relay: Relay) => {
-    setSelectedRelays(selectedRelays().filter(r => r.url !== relay.url));
+    setSelectedRelays(selectedRelays.filter(r => r.url !== relay.url));
   };
 
   const handleClearSelection = () => {
@@ -34,7 +34,7 @@ function App() {
   };
 
   const handleCompare = () => {
-    if (selectedRelays().length >= 2) {
+    if (selectedRelays.length >= 2) {
       setShowCompare(true);
     }
   };
@@ -45,18 +45,18 @@ function App() {
 
   return (
     <AuthContext.Provider value={auth}>
-      <div class="app">
-        <header class="header">
-          <div class="header-content">
-            <div class="brand">
-              <img src="/cloistr-logo.svg" alt="Cloistr" class="brand-logo" />
-              <div class="brand-text">
+      <div className="app">
+        <header className="header">
+          <div className="header-content">
+            <div className="brand">
+              <img src="/cloistr-logo.svg" alt="Cloistr" className="brand-logo" />
+              <div className="brand-text">
                 <h1>Relay Discovery</h1>
-                <span class="tagline">Find your perfect Nostr relays</span>
+                <span className="tagline">Find your perfect Nostr relays</span>
               </div>
             </div>
-            <div class="header-actions">
-              <button class="btn btn-wizard" onClick={() => setShowWizard(true)}>
+            <div className="header-actions">
+              <button className="btn btn-wizard" onClick={() => setShowWizard(true)}>
                 Find Relays
               </button>
               <LoginButton />
@@ -64,58 +64,58 @@ function App() {
           </div>
         </header>
 
-        <main class="main">
-          <FilterBar filters={filters()} onFilterChange={setFilters} />
+        <main className="main">
+          <FilterBar filters={filters} onFilterChange={setFilters} />
 
-          <div class="view-toggle">
+          <div className="view-toggle">
             <button
-              class={`view-toggle-btn ${viewMode() === 'list' ? 'active' : ''}`}
+              className={`view-toggle-btn ${viewMode === 'list' ? 'active' : ''}`}
               onClick={() => setViewMode('list')}
             >
               List
             </button>
             <button
-              class={`view-toggle-btn ${viewMode() === 'map' ? 'active' : ''}`}
+              className={`view-toggle-btn ${viewMode === 'map' ? 'active' : ''}`}
               onClick={() => setViewMode('map')}
             >
               Map
             </button>
           </div>
 
-          <Show when={viewMode() === 'list'}>
+          {viewMode === 'list' && (
             <RelayList
-              filters={filters()}
-              selectedRelays={selectedRelays()}
+              filters={filters}
+              selectedRelays={selectedRelays}
               onSelectRelay={handleSelectRelay}
               maxSelection={MAX_COMPARE}
             />
-          </Show>
-          <Show when={viewMode() === 'map'}>
-            <RelayMap filters={filters()} />
-          </Show>
+          )}
+          {viewMode === 'map' && (
+            <RelayMap filters={filters} />
+          )}
         </main>
 
-        <footer class="footer">
+        <footer className="footer">
           <p>
             Powered by <a href="https://cloistr.xyz">Cloistr</a>
           </p>
         </footer>
 
         <CompareBar
-          selectedRelays={selectedRelays()}
+          selectedRelays={selectedRelays}
           onCompare={handleCompare}
           onClear={handleClearSelection}
           onRemove={handleRemoveFromCompare}
         />
 
         <CompareView
-          relays={selectedRelays()}
-          isOpen={showCompare()}
+          relays={selectedRelays}
+          isOpen={showCompare}
           onClose={handleCloseCompare}
         />
 
         <RecommendationWizard
-          isOpen={showWizard()}
+          isOpen={showWizard}
           onClose={() => setShowWizard(false)}
         />
       </div>

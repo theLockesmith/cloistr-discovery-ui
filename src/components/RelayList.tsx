@@ -1,4 +1,4 @@
-import { For, Show, createSignal, createEffect, on } from 'solid-js';
+import { useState, useEffect, useMemo } from 'react';
 import type { Relay, RelayFilters } from '../lib/types';
 import { api } from '../lib/api';
 import { RelayCard } from './RelayCard';
@@ -13,59 +13,73 @@ interface RelayListProps {
 type SortField = 'latency_ms' | 'uptime_percent' | 'health' | 'name';
 type SortOrder = 'asc' | 'desc';
 
-export function RelayList(props: RelayListProps) {
-  const [relays, setRelays] = createSignal<Relay[]>([]);
-  const [loading, setLoading] = createSignal(true);
-  const [error, setError] = createSignal<string | null>(null);
-  const [sortField, setSortField] = createSignal<SortField>('latency_ms');
-  const [sortOrder, setSortOrder] = createSignal<SortOrder>('asc');
+export function RelayList({ filters, selectedRelays, onSelectRelay, maxSelection }: RelayListProps) {
+  const [relays, setRelays] = useState<Relay[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [sortField, setSortField] = useState<SortField>('latency_ms');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
 
   // Fetch relays when filters change
-  createEffect(on(() => props.filters, async (filters) => {
-    setLoading(true);
-    setError(null);
+  useEffect(() => {
+    let cancelled = false;
 
-    try {
-      const response = await api.getRelays(filters);
-      setRelays(response.relays || []);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch relays');
-      setRelays([]);
-    } finally {
-      setLoading(false);
+    async function fetchRelays() {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const response = await api.getRelays(filters);
+        if (!cancelled) {
+          setRelays(response.relays || []);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : 'Failed to fetch relays');
+          setRelays([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
     }
-  }));
 
-  const sortedRelays = () => {
-    const list = [...relays()];
-    const field = sortField();
-    const order = sortOrder();
+    fetchRelays();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [filters]);
+
+  const sortedRelays = useMemo(() => {
+    const list = [...relays];
 
     list.sort((a, b) => {
-      const aVal = a[field];
-      const bVal = b[field];
+      const aVal = a[sortField];
+      const bVal = b[sortField];
 
       // Handle health as priority: online > degraded > offline
-      if (field === 'health') {
-        const healthOrder = { online: 0, degraded: 1, offline: 2 };
+      if (sortField === 'health') {
+        const healthOrder: Record<string, number> = { online: 0, degraded: 1, offline: 2 };
         const aHealth = healthOrder[a.health] ?? 3;
         const bHealth = healthOrder[b.health] ?? 3;
-        return order === 'asc' ? aHealth - bHealth : bHealth - aHealth;
+        return sortOrder === 'asc' ? aHealth - bHealth : bHealth - aHealth;
       }
 
       // Handle uptime_percent - null values sort to end
-      if (field === 'uptime_percent') {
+      if (sortField === 'uptime_percent') {
         const aUptime = a.uptime_percent ?? -1;
         const bUptime = b.uptime_percent ?? -1;
         if (aUptime === -1 && bUptime === -1) return 0;
         if (aUptime === -1) return 1; // nulls to end
         if (bUptime === -1) return -1; // nulls to end
-        return order === 'asc' ? aUptime - bUptime : bUptime - aUptime;
+        return sortOrder === 'asc' ? aUptime - bUptime : bUptime - aUptime;
       }
 
       // Handle strings (name field)
       if (typeof aVal === 'string' && typeof bVal === 'string') {
-        return order === 'asc'
+        return sortOrder === 'asc'
           ? aVal.localeCompare(bVal)
           : bVal.localeCompare(aVal);
       }
@@ -74,17 +88,17 @@ export function RelayList(props: RelayListProps) {
       const aNum = aVal as number;
       const bNum = bVal as number;
 
-      if (order === 'asc') {
+      if (sortOrder === 'asc') {
         return aNum - bNum;
       }
       return bNum - aNum;
     });
 
     return list;
-  };
+  }, [relays, sortField, sortOrder]);
 
   const toggleSort = (field: SortField) => {
-    if (sortField() === field) {
+    if (sortField === field) {
       setSortOrder(o => o === 'asc' ? 'desc' : 'asc');
     } else {
       setSortField(field);
@@ -92,33 +106,28 @@ export function RelayList(props: RelayListProps) {
     }
   };
 
-  const SortButton = (props: { field: SortField; label: string }) => {
-    const isActive = () => sortField() === props.field;
-    const arrow = () => {
-      if (!isActive()) return '';
-      return sortOrder() === 'asc' ? ' ^' : ' v';
-    };
+  const SortButton = ({ field, label }: { field: SortField; label: string }) => {
+    const isActive = sortField === field;
+    const arrow = isActive ? (sortOrder === 'asc' ? ' ^' : ' v') : '';
 
     return (
       <button
-        class={`sort-btn ${isActive() ? 'active' : ''}`}
-        onClick={() => toggleSort(props.field)}
+        className={`sort-btn ${isActive ? 'active' : ''}`}
+        onClick={() => toggleSort(field)}
       >
-        {props.label}{arrow()}
+        {label}{arrow}
       </button>
     );
   };
 
   return (
-    <div class="relay-list">
-      <div class="relay-list-header">
-        <div class="relay-count">
-          <Show when={!loading()} fallback="Loading...">
-            {relays().length} relays
-          </Show>
+    <div className="relay-list">
+      <div className="relay-list-header">
+        <div className="relay-count">
+          {loading ? 'Loading...' : `${relays.length} relays`}
         </div>
-        <div class="sort-controls">
-          <span class="sort-label">Sort by:</span>
+        <div className="sort-controls">
+          <span className="sort-label">Sort by:</span>
           <SortButton field="latency_ms" label="Latency" />
           <SortButton field="uptime_percent" label="Uptime" />
           <SortButton field="health" label="Health" />
@@ -126,42 +135,43 @@ export function RelayList(props: RelayListProps) {
         </div>
       </div>
 
-      <Show when={error()}>
-        <div class="error-message">
-          {error()}
+      {error && (
+        <div className="error-message">
+          {error}
         </div>
-      </Show>
+      )}
 
-      <Show when={loading()}>
-        <div class="loading">
-          <div class="spinner" />
+      {loading && (
+        <div className="loading">
+          <div className="spinner" />
           <span>Loading relays...</span>
         </div>
-      </Show>
+      )}
 
-      <Show when={!loading() && !error()}>
-        <Show when={sortedRelays().length === 0}>
-          <div class="no-results">
-            No relays found matching your filters.
-          </div>
-        </Show>
+      {!loading && !error && (
+        <>
+          {sortedRelays.length === 0 && (
+            <div className="no-results">
+              No relays found matching your filters.
+            </div>
+          )}
 
-        <div class="relay-grid">
-          <For each={sortedRelays()}>
-            {relay => (
+          <div className="relay-grid">
+            {sortedRelays.map(relay => (
               <RelayCard
+                key={relay.url}
                 relay={relay}
-                selected={props.selectedRelays?.some(r => r.url === relay.url)}
-                onSelect={props.onSelectRelay}
+                selected={selectedRelays?.some(r => r.url === relay.url)}
+                onSelect={onSelectRelay}
                 selectionDisabled={
-                  props.maxSelection !== undefined &&
-                  (props.selectedRelays?.length ?? 0) >= props.maxSelection
+                  maxSelection !== undefined &&
+                  (selectedRelays?.length ?? 0) >= maxSelection
                 }
               />
-            )}
-          </For>
-        </div>
-      </Show>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 }

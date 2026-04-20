@@ -1,4 +1,4 @@
-import { Show, For, createSignal } from 'solid-js';
+import { useState, useMemo } from 'react';
 import type { Relay } from '../lib/types';
 import { useAuth } from '../lib/nostr';
 import { getCountryName } from '../lib/countries';
@@ -9,18 +9,18 @@ interface Props {
   onClose: () => void;
 }
 
-export function CompareView(props: Props) {
+export function CompareView({ relays, isOpen, onClose }: Props) {
   const auth = useAuth();
-  const [addingRelay, setAddingRelay] = createSignal<string | null>(null);
+  const [addingRelay, setAddingRelay] = useState<string | null>(null);
 
-  const handleBackdropClick = (e: MouseEvent) => {
+  const handleBackdropClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) {
-      props.onClose();
+      onClose();
     }
   };
 
   const handleAddRelay = async (url: string) => {
-    if (!auth.state().pubkey) return;
+    if (!auth.state.pubkey) return;
 
     setAddingRelay(url);
     try {
@@ -33,15 +33,15 @@ export function CompareView(props: Props) {
   };
 
   // Find best values for highlighting
-  const bestLatency = () => {
-    const latencies = props.relays.map(r => r.latency_ms).filter(l => l > 0);
+  const bestLatency = useMemo(() => {
+    const latencies = relays.map(r => r.latency_ms).filter(l => l > 0);
     return Math.min(...latencies);
-  };
+  }, [relays]);
 
-  const bestUptime = () => {
-    const uptimes = props.relays.map(r => r.uptime_percent || 0);
+  const bestUptime = useMemo(() => {
+    const uptimes = relays.map(r => r.uptime_percent || 0);
     return Math.max(...uptimes);
-  };
+  }, [relays]);
 
   const healthRank = (health: string) => {
     switch (health) {
@@ -52,202 +52,178 @@ export function CompareView(props: Props) {
     }
   };
 
-  const bestHealth = () => {
-    const ranks = props.relays.map(r => healthRank(r.health));
+  const bestHealth = useMemo(() => {
+    const ranks = relays.map(r => healthRank(r.health));
     return Math.min(...ranks);
-  };
+  }, [relays]);
 
-  const isBestLatency = (relay: Relay) => relay.latency_ms === bestLatency();
-  const isBestUptime = (relay: Relay) => (relay.uptime_percent || 0) === bestUptime();
-  const isBestHealth = (relay: Relay) => healthRank(relay.health) === bestHealth();
+  const isBestLatency = (relay: Relay) => relay.latency_ms === bestLatency;
+  const isBestUptime = (relay: Relay) => (relay.uptime_percent || 0) === bestUptime;
+  const isBestHealth = (relay: Relay) => healthRank(relay.health) === bestHealth;
+
+  if (!isOpen) return null;
 
   return (
-    <Show when={props.isOpen}>
-      <div class="compare-overlay" onClick={handleBackdropClick}>
-        <div class="compare-modal">
-          <div class="compare-header">
-            <h2>Compare Relays</h2>
-            <button class="compare-close" onClick={props.onClose}>&times;</button>
-          </div>
+    <div className="compare-overlay" onClick={handleBackdropClick}>
+      <div className="compare-modal">
+        <div className="compare-header">
+          <h2>Compare Relays</h2>
+          <button className="compare-close" onClick={onClose}>&times;</button>
+        </div>
 
-          <div class="compare-content">
-            <div class="compare-grid" style={{ "--cols": props.relays.length }}>
-              {/* Header row - Relay names */}
-              <div class="compare-row compare-row-header">
-                <div class="compare-label">Relay</div>
-                <For each={props.relays}>
-                  {(relay) => (
-                    <div class="compare-cell compare-cell-header">
-                      <strong>{relay.name || 'Unnamed'}</strong>
-                      <span class="compare-url">{relay.url}</span>
-                    </div>
-                  )}
-                </For>
-              </div>
+        <div className="compare-content">
+          <div className="compare-grid" style={{ '--cols': relays.length } as React.CSSProperties}>
+            {/* Header row - Relay names */}
+            <div className="compare-row compare-row-header">
+              <div className="compare-label">Relay</div>
+              {relays.map((relay) => (
+                <div key={relay.url} className="compare-cell compare-cell-header">
+                  <strong>{relay.name || 'Unnamed'}</strong>
+                  <span className="compare-url">{relay.url}</span>
+                </div>
+              ))}
+            </div>
 
-              {/* Health */}
-              <div class="compare-row">
-                <div class="compare-label">Health</div>
-                <For each={props.relays}>
-                  {(relay) => (
-                    <div class={`compare-cell ${isBestHealth(relay) ? 'compare-best' : ''}`}>
-                      <span class={`health-dot health-${relay.health}`} />
-                      <span>{relay.health}</span>
-                    </div>
-                  )}
-                </For>
-              </div>
+            {/* Health */}
+            <div className="compare-row">
+              <div className="compare-label">Health</div>
+              {relays.map((relay) => (
+                <div key={relay.url} className={`compare-cell ${isBestHealth(relay) ? 'compare-best' : ''}`}>
+                  <span className={`health-dot health-${relay.health}`} />
+                  <span>{relay.health}</span>
+                </div>
+              ))}
+            </div>
 
-              {/* Latency */}
-              <div class="compare-row">
-                <div class="compare-label">Latency</div>
-                <For each={props.relays}>
-                  {(relay) => (
-                    <div class={`compare-cell ${isBestLatency(relay) ? 'compare-best' : ''}`}>
-                      {relay.latency_ms}ms
-                    </div>
-                  )}
-                </For>
-              </div>
+            {/* Latency */}
+            <div className="compare-row">
+              <div className="compare-label">Latency</div>
+              {relays.map((relay) => (
+                <div key={relay.url} className={`compare-cell ${isBestLatency(relay) ? 'compare-best' : ''}`}>
+                  {relay.latency_ms}ms
+                </div>
+              ))}
+            </div>
 
-              {/* Uptime */}
-              <div class="compare-row">
-                <div class="compare-label">Uptime</div>
-                <For each={props.relays}>
-                  {(relay) => (
-                    <div class={`compare-cell ${isBestUptime(relay) ? 'compare-best' : ''}`}>
-                      {relay.uptime_percent?.toFixed(1) || '?'}%
-                    </div>
-                  )}
-                </For>
-              </div>
+            {/* Uptime */}
+            <div className="compare-row">
+              <div className="compare-label">Uptime</div>
+              {relays.map((relay) => (
+                <div key={relay.url} className={`compare-cell ${isBestUptime(relay) ? 'compare-best' : ''}`}>
+                  {relay.uptime_percent?.toFixed(1) || '?'}%
+                </div>
+              ))}
+            </div>
 
-              {/* NIPs */}
-              <div class="compare-row">
-                <div class="compare-label">NIPs</div>
-                <For each={props.relays}>
-                  {(relay) => (
-                    <div class="compare-cell compare-cell-nips">
-                      <span class="compare-nip-count">{relay.supported_nips?.length || 0} NIPs</span>
-                      <div class="compare-nip-list">
-                        {relay.supported_nips?.slice(0, 8).map(nip => (
-                          <span class="nip-badge">{nip}</span>
-                        ))}
-                        <Show when={(relay.supported_nips?.length || 0) > 8}>
-                          <span class="nip-more">+{relay.supported_nips!.length - 8}</span>
-                        </Show>
-                      </div>
-                    </div>
-                  )}
-                </For>
-              </div>
+            {/* NIPs */}
+            <div className="compare-row">
+              <div className="compare-label">NIPs</div>
+              {relays.map((relay) => (
+                <div key={relay.url} className="compare-cell compare-cell-nips">
+                  <span className="compare-nip-count">{relay.supported_nips?.length || 0} NIPs</span>
+                  <div className="compare-nip-list">
+                    {relay.supported_nips?.slice(0, 8).map(nip => (
+                      <span key={nip} className="nip-badge">{nip}</span>
+                    ))}
+                    {(relay.supported_nips?.length || 0) > 8 && (
+                      <span className="nip-more">+{relay.supported_nips!.length - 8}</span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
 
-              {/* Moderation */}
-              <div class="compare-row">
-                <div class="compare-label">Moderation</div>
-                <For each={props.relays}>
-                  {(relay) => (
-                    <div class="compare-cell">
-                      {relay.moderation || 'unknown'}
-                    </div>
-                  )}
-                </For>
-              </div>
+            {/* Moderation */}
+            <div className="compare-row">
+              <div className="compare-label">Moderation</div>
+              {relays.map((relay) => (
+                <div key={relay.url} className="compare-cell">
+                  {relay.moderation || 'unknown'}
+                </div>
+              ))}
+            </div>
 
-              {/* Content Policy */}
-              <div class="compare-row">
-                <div class="compare-label">Content</div>
-                <For each={props.relays}>
-                  {(relay) => (
-                    <div class="compare-cell">
-                      {relay.content_policy || 'unknown'}
-                    </div>
-                  )}
-                </For>
-              </div>
+            {/* Content Policy */}
+            <div className="compare-row">
+              <div className="compare-label">Content</div>
+              {relays.map((relay) => (
+                <div key={relay.url} className="compare-cell">
+                  {relay.content_policy || 'unknown'}
+                </div>
+              ))}
+            </div>
 
-              {/* Payment */}
-              <div class="compare-row">
-                <div class="compare-label">Payment</div>
-                <For each={props.relays}>
-                  {(relay) => (
-                    <div class="compare-cell">
-                      <span class={`payment-badge ${relay.payment_required ? 'payment-paid' : 'payment-free'}`}>
-                        {relay.payment_required ? 'paid' : 'free'}
-                      </span>
-                    </div>
-                  )}
-                </For>
-              </div>
+            {/* Payment */}
+            <div className="compare-row">
+              <div className="compare-label">Payment</div>
+              {relays.map((relay) => (
+                <div key={relay.url} className="compare-cell">
+                  <span className={`payment-badge ${relay.payment_required ? 'payment-paid' : 'payment-free'}`}>
+                    {relay.payment_required ? 'paid' : 'free'}
+                  </span>
+                </div>
+              ))}
+            </div>
 
-              {/* Auth Required */}
-              <div class="compare-row">
-                <div class="compare-label">Auth</div>
-                <For each={props.relays}>
-                  {(relay) => (
-                    <div class="compare-cell">
-                      {relay.auth_required ? 'required' : 'open'}
-                    </div>
-                  )}
-                </For>
-              </div>
+            {/* Auth Required */}
+            <div className="compare-row">
+              <div className="compare-label">Auth</div>
+              {relays.map((relay) => (
+                <div key={relay.url} className="compare-cell">
+                  {relay.auth_required ? 'required' : 'open'}
+                </div>
+              ))}
+            </div>
 
-              {/* Location */}
-              <div class="compare-row">
-                <div class="compare-label">Location</div>
-                <For each={props.relays}>
-                  {(relay) => (
-                    <div class="compare-cell">
-                      {getCountryName(relay.country_code) || relay.location || 'unknown'}
-                    </div>
-                  )}
-                </For>
-              </div>
+            {/* Location */}
+            <div className="compare-row">
+              <div className="compare-label">Location</div>
+              {relays.map((relay) => (
+                <div key={relay.url} className="compare-cell">
+                  {getCountryName(relay.country_code) || relay.location || 'unknown'}
+                </div>
+              ))}
+            </div>
 
-              {/* Software */}
-              <div class="compare-row">
-                <div class="compare-label">Software</div>
-                <For each={props.relays}>
-                  {(relay) => (
-                    <div class="compare-cell">
-                      {relay.software || 'unknown'}
-                      <Show when={relay.version}>
-                        <span class="compare-version"> v{relay.version}</span>
-                      </Show>
-                    </div>
+            {/* Software */}
+            <div className="compare-row">
+              <div className="compare-label">Software</div>
+              {relays.map((relay) => (
+                <div key={relay.url} className="compare-cell">
+                  {relay.software || 'unknown'}
+                  {relay.version && (
+                    <span className="compare-version"> v{relay.version}</span>
                   )}
-                </For>
-              </div>
+                </div>
+              ))}
+            </div>
 
-              {/* Action row */}
-              <div class="compare-row compare-row-actions">
-                <div class="compare-label">Action</div>
-                <For each={props.relays}>
-                  {(relay) => (
-                    <div class="compare-cell">
-                      <Show when={auth.state().pubkey} fallback={
-                        <span class="compare-login-hint">Login to add</span>
-                      }>
-                        <Show when={auth.hasRelay(relay.url)} fallback={
-                          <button
-                            class="btn btn-add"
-                            onClick={() => handleAddRelay(relay.url)}
-                            disabled={addingRelay() === relay.url}
-                          >
-                            {addingRelay() === relay.url ? 'Adding...' : 'Add to My Relays'}
-                          </button>
-                        }>
-                          <span class="compare-added">Already added</span>
-                        </Show>
-                      </Show>
-                    </div>
+            {/* Action row */}
+            <div className="compare-row compare-row-actions">
+              <div className="compare-label">Action</div>
+              {relays.map((relay) => (
+                <div key={relay.url} className="compare-cell">
+                  {auth.state.pubkey ? (
+                    auth.hasRelay(relay.url) ? (
+                      <span className="compare-added">Already added</span>
+                    ) : (
+                      <button
+                        className="btn btn-add"
+                        onClick={() => handleAddRelay(relay.url)}
+                        disabled={addingRelay === relay.url}
+                      >
+                        {addingRelay === relay.url ? 'Adding...' : 'Add to My Relays'}
+                      </button>
+                    )
+                  ) : (
+                    <span className="compare-login-hint">Login to add</span>
                   )}
-                </For>
-              </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>
       </div>
-    </Show>
+    </div>
   );
 }
