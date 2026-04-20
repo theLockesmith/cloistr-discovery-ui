@@ -1,19 +1,20 @@
-/* Base styles */
+/* Base styles - use Cloistr UI variables */
 :root {
-  --color-bg: #0f0f0f;
-  --color-surface: #1a1a1a;
-  --color-surface-elevated: #252525;
-  --color-border: #333;
-  --color-text: #e5e5e5;
-  --color-text-muted: #888;
-  --color-primary: #8b5cf6;
-  --color-primary-hover: #a78bfa;
-  --color-success: #22c55e;
-  --color-warning: #eab308;
-  --color-error: #ef4444;
-  --radius-sm: 4px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
+  /* Map local vars to cloistr-ui vars for compatibility */
+  --color-bg: var(--cloistr-bg);
+  --color-surface: var(--cloistr-bg-elevated);
+  --color-surface-elevated: var(--cloistr-bg-hover);
+  --color-border: var(--cloistr-border);
+  --color-text: var(--cloistr-text);
+  --color-text-muted: var(--cloistr-text-muted);
+  --color-primary: var(--cloistr-primary);
+  --color-primary-hover: var(--cloistr-primary-hover);
+  --color-success: var(--cloistr-success);
+  --color-warning: var(--cloistr-warning);
+  --color-error: var(--cloistr-error);
+  --radius-sm: var(--cloistr-radius-sm);
+  --radius-md: var(--cloistr-radius-md);
+  --radius-lg: var(--cloistr-radius-lg);
 }
 
 * {

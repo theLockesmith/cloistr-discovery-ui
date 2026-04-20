@@ -1,27 +1,12 @@
 import { createContext, useContext, useState, useCallback, useMemo } from 'react';
-import { SimplePool, type Event, type EventTemplate, generateSecretKey } from 'nostr-tools';
+import { SimplePool, type Event, type UnsignedEvent, generateSecretKey } from 'nostr-tools';
 import { BunkerSigner, parseBunkerInput } from 'nostr-tools/nip46';
 import type { AuthState, UserRelay } from './types';
 
-// NIP-07 window.nostr interface
-declare global {
-  interface Window {
-    nostr?: {
-      getPublicKey(): Promise<string>;
-      signEvent(event: object): Promise<Event>;
-      getRelays?(): Promise<Record<string, { read: boolean; write: boolean }>>;
-      nip04?: {
-        encrypt(pubkey: string, plaintext: string): Promise<string>;
-        decrypt(pubkey: string, ciphertext: string): Promise<string>;
-      };
-    };
-  }
-}
-
-// Unified signer interface
+// Unified signer interface (compatible with cloistr-ui types)
 interface Signer {
   getPublicKey(): Promise<string>;
-  signEvent(event: EventTemplate): Promise<Event>;
+  signEvent(event: UnsignedEvent): Promise<Event>;
 }
 
 // NIP-07 adapter to match Signer interface
@@ -31,9 +16,9 @@ class Nip07Signer implements Signer {
     return window.nostr.getPublicKey();
   }
 
-  async signEvent(event: EventTemplate): Promise<Event> {
+  async signEvent(event: UnsignedEvent): Promise<Event> {
     if (!window.nostr) throw new Error('No Nostr extension found');
-    return window.nostr.signEvent(event) as Promise<Event>;
+    return window.nostr.signEvent(event);
   }
 }
 
@@ -126,6 +111,8 @@ export function createAuthStore() {
       throw new Error('Not logged in');
     }
 
+    const pubkey = await currentSigner.getPublicKey();
+
     const tags = relays.map(r => {
       if (r.read && r.write) {
         return ['r', r.url];
@@ -136,11 +123,12 @@ export function createAuthStore() {
       }
     });
 
-    const unsignedEvent: EventTemplate = {
+    const unsignedEvent: UnsignedEvent = {
       kind: 10002,
       created_at: Math.floor(Date.now() / 1000),
       tags,
       content: '',
+      pubkey,
     };
 
     const signedEvent = await currentSigner.signEvent(unsignedEvent);

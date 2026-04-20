@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Footer } from '@cloistr/ui';
 import { AuthContext, createAuthStore } from './lib/nostr';
 import { RelayList, RelayMap, FilterBar, LoginButton, RecommendationWizard, CompareBar, CompareView } from './components';
 import type { Relay, RelayFilters } from './lib/types';
@@ -95,11 +96,7 @@ function App() {
           )}
         </main>
 
-        <footer className="footer">
-          <p>
-            Powered by <a href="https://cloistr.xyz">Cloistr</a>
-          </p>
-        </footer>
+        <Footer />
 
         <CompareBar
           selectedRelays={selectedRelays}
