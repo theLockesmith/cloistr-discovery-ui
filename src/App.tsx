@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Footer, ToastProvider } from '@cloistr/ui/components';
 import '@cloistr/ui/styles';
-import { AuthContext, createAuthStore } from './lib/nostr';
+import { AuthContext, createAuthStore, CollabAuthProvider } from './lib/nostr';
 import { RelayList, RelayMap, FilterBar, LoginButton, RecommendationWizard, CompareBar, CompareView } from './components';
 import type { Relay, RelayFilters } from './lib/types';
 import './App.css';
@@ -9,7 +9,8 @@ import './App.css';
 type ViewMode = 'list' | 'map';
 const MAX_COMPARE = 3;
 
-function App() {
+// Inner component that uses auth (must be inside CollabAuthProvider)
+function AppContent() {
   const auth = createAuthStore();
   const [filters, setFilters] = useState<RelayFilters>({ health: 'online' });
   const [showWizard, setShowWizard] = useState(false);
@@ -120,6 +121,15 @@ function App() {
         </div>
       </AuthContext.Provider>
     </ToastProvider>
+  );
+}
+
+// Main App component - wraps with collab-common AuthProvider
+function App() {
+  return (
+    <CollabAuthProvider>
+      <AppContent />
+    </CollabAuthProvider>
   );
 }
 
