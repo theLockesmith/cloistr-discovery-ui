@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Footer } from '@cloistr/ui';
+import { Footer, ToastProvider } from '@cloistr/ui/components';
+import '@cloistr/ui/styles';
 import { AuthContext, createAuthStore } from './lib/nostr';
 import { RelayList, RelayMap, FilterBar, LoginButton, RecommendationWizard, CompareBar, CompareView } from './components';
 import type { Relay, RelayFilters } from './lib/types';
@@ -45,78 +46,80 @@ function App() {
   };
 
   return (
-    <AuthContext.Provider value={auth}>
-      <div className="app">
-        <header className="header">
-          <div className="header-content">
-            <div className="brand">
-              <img src="/cloistr-logo.svg" alt="Cloistr" className="brand-logo" />
-              <div className="brand-text">
-                <h1>Relay Discovery</h1>
-                <span className="tagline">Find your perfect Nostr relays</span>
+    <ToastProvider>
+      <AuthContext.Provider value={auth}>
+        <div className="app">
+          <header className="header">
+            <div className="header-content">
+              <div className="brand">
+                <img src="/cloistr-logo.svg" alt="Cloistr" className="brand-logo" />
+                <div className="brand-text">
+                  <h1>Relay Discovery</h1>
+                  <span className="tagline">Find your perfect Nostr relays</span>
+                </div>
+              </div>
+              <div className="header-actions">
+                <button className="btn btn-wizard" onClick={() => setShowWizard(true)}>
+                  Find Relays
+                </button>
+                <LoginButton />
               </div>
             </div>
-            <div className="header-actions">
-              <button className="btn btn-wizard" onClick={() => setShowWizard(true)}>
-                Find Relays
+          </header>
+
+          <main className="main">
+            <FilterBar filters={filters} onFilterChange={setFilters} />
+
+            <div className="view-toggle">
+              <button
+                className={`view-toggle-btn ${viewMode === 'list' ? 'active' : ''}`}
+                onClick={() => setViewMode('list')}
+              >
+                List
               </button>
-              <LoginButton />
+              <button
+                className={`view-toggle-btn ${viewMode === 'map' ? 'active' : ''}`}
+                onClick={() => setViewMode('map')}
+              >
+                Map
+              </button>
             </div>
-          </div>
-        </header>
 
-        <main className="main">
-          <FilterBar filters={filters} onFilterChange={setFilters} />
+            {viewMode === 'list' && (
+              <RelayList
+                filters={filters}
+                selectedRelays={selectedRelays}
+                onSelectRelay={handleSelectRelay}
+                maxSelection={MAX_COMPARE}
+              />
+            )}
+            {viewMode === 'map' && (
+              <RelayMap filters={filters} />
+            )}
+          </main>
 
-          <div className="view-toggle">
-            <button
-              className={`view-toggle-btn ${viewMode === 'list' ? 'active' : ''}`}
-              onClick={() => setViewMode('list')}
-            >
-              List
-            </button>
-            <button
-              className={`view-toggle-btn ${viewMode === 'map' ? 'active' : ''}`}
-              onClick={() => setViewMode('map')}
-            >
-              Map
-            </button>
-          </div>
+          <Footer />
 
-          {viewMode === 'list' && (
-            <RelayList
-              filters={filters}
-              selectedRelays={selectedRelays}
-              onSelectRelay={handleSelectRelay}
-              maxSelection={MAX_COMPARE}
-            />
-          )}
-          {viewMode === 'map' && (
-            <RelayMap filters={filters} />
-          )}
-        </main>
+          <CompareBar
+            selectedRelays={selectedRelays}
+            onCompare={handleCompare}
+            onClear={handleClearSelection}
+            onRemove={handleRemoveFromCompare}
+          />
 
-        <Footer />
+          <CompareView
+            relays={selectedRelays}
+            isOpen={showCompare}
+            onClose={handleCloseCompare}
+          />
 
-        <CompareBar
-          selectedRelays={selectedRelays}
-          onCompare={handleCompare}
-          onClear={handleClearSelection}
-          onRemove={handleRemoveFromCompare}
-        />
-
-        <CompareView
-          relays={selectedRelays}
-          isOpen={showCompare}
-          onClose={handleCloseCompare}
-        />
-
-        <RecommendationWizard
-          isOpen={showWizard}
-          onClose={() => setShowWizard(false)}
-        />
-      </div>
-    </AuthContext.Provider>
+          <RecommendationWizard
+            isOpen={showWizard}
+            onClose={() => setShowWizard(false)}
+          />
+        </div>
+      </AuthContext.Provider>
+    </ToastProvider>
   );
 }
 
