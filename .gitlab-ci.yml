@@ -1,14 +1,43 @@
 stages:
+  - update
   - test
   - build
 
 variables:
   NODE_VERSION: "22"
 
-# Test and type-check
+# Auto-update @cloistr/ui when triggered from upstream
+update-dependency:
+  stage: update
+  image: node:${NODE_VERSION}-alpine
+  rules:
+    - if: '$UPSTREAM_TRIGGER == "true"'
+  before_script:
+    - corepack enable && corepack prepare pnpm@latest --activate
+    - apk add --no-cache git openssh-client
+    - git config --global user.email "ci@coldforge.xyz"
+    - git config --global user.name "GitLab CI"
+  script:
+    - echo "Updating ${UPSTREAM_PACKAGE}..."
+    - pnpm update ${UPSTREAM_PACKAGE}
+    - |
+      if git diff --quiet pnpm-lock.yaml; then
+        echo "No changes to lockfile, already up to date"
+      else
+        echo "Lockfile updated, committing..."
+        git add pnpm-lock.yaml package.json
+        git commit -m "chore: Update ${UPSTREAM_PACKAGE} [auto]"
+        git push "https://gitlab-ci-token:${CI_JOB_TOKEN}@${CI_SERVER_HOST}/${CI_PROJECT_PATH}.git" HEAD:${CI_COMMIT_REF_NAME}
+      fi
+
+# Test and type-check (skip when triggered from upstream)
 test:
   stage: test
   image: node:${NODE_VERSION}-alpine
+  rules:
+    - if: '$UPSTREAM_TRIGGER == "true"'
+      when: never
+    - when: always
   before_script:
     - corepack enable && corepack prepare pnpm@latest --activate
     - pnpm install --frozen-lockfile
@@ -20,12 +49,16 @@ test:
       - node_modules/
       - .pnpm-store/
 
-# Build container image
+# Build container image (skip when triggered from upstream)
 build:
   stage: build
   image:
     name: gcr.io/kaniko-project/executor:debug
     entrypoint: [""]
+  rules:
+    - if: '$UPSTREAM_TRIGGER == "true"'
+      when: never
+    - if: '$CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "master"'
   script:
     - mkdir -p /kaniko/.docker
     - echo "{\"auths\":{\"${CI_REGISTRY}\":{\"username\":\"${CI_REGISTRY_USER}\",\"password\":\"${CI_REGISTRY_PASSWORD}\"}}}" > /kaniko/.docker/config.json
