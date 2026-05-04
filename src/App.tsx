@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Header, Footer, ToastProvider, SharedAuthProvider } from '@cloistr/ui/components';
 import '@cloistr/ui/styles';
+import { CollabAuthProvider } from './lib/nostr';
 import { RelayList, RelayMap, FilterBar, RecommendationWizard, CompareBar, CompareView } from './components';
 import type { Relay, RelayFilters } from './lib/types';
 import './App.css';
@@ -114,7 +115,9 @@ function App() {
   return (
     <ToastProvider>
       <SharedAuthProvider>
-        <AppContent />
+        <CollabAuthProvider>
+          <AppContent />
+        </CollabAuthProvider>
       </SharedAuthProvider>
     </ToastProvider>
   );
