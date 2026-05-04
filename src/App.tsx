@@ -1,17 +1,15 @@
 import { useState } from 'react';
-import { Footer, ToastProvider } from '@cloistr/ui/components';
+import { Header, Footer, ToastProvider, SharedAuthProvider } from '@cloistr/ui/components';
 import '@cloistr/ui/styles';
-import { AuthContext, createAuthStore, CollabAuthProvider } from './lib/nostr';
-import { RelayList, RelayMap, FilterBar, LoginButton, RecommendationWizard, CompareBar, CompareView } from './components';
+import { RelayList, RelayMap, FilterBar, RecommendationWizard, CompareBar, CompareView } from './components';
 import type { Relay, RelayFilters } from './lib/types';
 import './App.css';
 
 type ViewMode = 'list' | 'map';
 const MAX_COMPARE = 3;
 
-// Inner component that uses auth (must be inside CollabAuthProvider)
+// Inner component that uses auth
 function AppContent() {
-  const auth = createAuthStore();
   const [filters, setFilters] = useState<RelayFilters>({ health: 'online' });
   const [showWizard, setShowWizard] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('list');
@@ -47,28 +45,17 @@ function AppContent() {
   };
 
   return (
-    <ToastProvider>
-      <AuthContext.Provider value={auth}>
-        <div className="app">
-          <header className="header">
-            <div className="header-content">
-              <div className="brand">
-                <img src="/cloistr-logo.svg" alt="Cloistr" className="brand-logo" />
-                <div className="brand-text">
-                  <h1>Relay Discovery</h1>
-                  <span className="tagline">Find your perfect Nostr relays</span>
-                </div>
-              </div>
-              <div className="header-actions">
-                <button className="btn btn-wizard" onClick={() => setShowWizard(true)}>
-                  Find Relays
-                </button>
-                <LoginButton />
-              </div>
-            </div>
-          </header>
+    <div className="app">
+      <Header activeServiceId="discover" />
 
-          <main className="main">
+      <main className="main">
+        <div className="page-header">
+          <h1>Relay Discovery</h1>
+          <p className="tagline">Find your perfect Nostr relays</p>
+          <button className="btn btn-wizard" onClick={() => setShowWizard(true)}>
+            Find Relays
+          </button>
+        </div>
             <FilterBar filters={filters} onFilterChange={setFilters} />
 
             <div className="view-toggle">
@@ -99,37 +86,37 @@ function AppContent() {
             )}
           </main>
 
-          <Footer />
+      <Footer />
 
-          <CompareBar
-            selectedRelays={selectedRelays}
-            onCompare={handleCompare}
-            onClear={handleClearSelection}
-            onRemove={handleRemoveFromCompare}
-          />
+      <CompareBar
+        selectedRelays={selectedRelays}
+        onCompare={handleCompare}
+        onClear={handleClearSelection}
+        onRemove={handleRemoveFromCompare}
+      />
 
-          <CompareView
-            relays={selectedRelays}
-            isOpen={showCompare}
-            onClose={handleCloseCompare}
-          />
+      <CompareView
+        relays={selectedRelays}
+        isOpen={showCompare}
+        onClose={handleCloseCompare}
+      />
 
-          <RecommendationWizard
-            isOpen={showWizard}
-            onClose={() => setShowWizard(false)}
-          />
-        </div>
-      </AuthContext.Provider>
-    </ToastProvider>
+      <RecommendationWizard
+        isOpen={showWizard}
+        onClose={() => setShowWizard(false)}
+      />
+    </div>
   );
 }
 
-// Main App component - wraps with collab-common AuthProvider
+// Main App component - wraps with SharedAuthProvider for cross-domain SSO
 function App() {
   return (
-    <CollabAuthProvider>
-      <AppContent />
-    </CollabAuthProvider>
+    <ToastProvider>
+      <SharedAuthProvider>
+        <AppContent />
+      </SharedAuthProvider>
+    </ToastProvider>
   );
 }
 
