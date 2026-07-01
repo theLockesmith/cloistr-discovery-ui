@@ -10,7 +10,7 @@ import {
   AuthProvider as CollabAuthProvider,
   useNostrAuth,
   type SignerInterface,
-} from '@cloistr/collab-common/auth';
+} from '@cloistr/auth';
 import type { AuthState, UserRelay } from './types';
 
 // Default relays for fetching/publishing kind 10002
