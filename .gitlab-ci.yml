@@ -6,9 +6,15 @@ stages:
   - update
   - test
   - build
+  - smoke
 
 variables:
   NODE_VERSION: "22"
+
+include:
+  - project: 'coldforge/ci-templates'
+    ref: main
+    file: '/templates/frontend-smoke.yml'
 
 # Auto-update @cloistr/ui when triggered from upstream
 update-dependency:
@@ -71,3 +77,8 @@ build:
       --dockerfile=${CI_PROJECT_DIR}/Dockerfile
       --destination=${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHA}
       --destination=${CI_REGISTRY_IMAGE}:latest
+
+# Smoke-test: load built image in real Chromium, fail on console errors / blank page
+smoke-test:
+  extends: .smoke-test
+  needs: ["build"]
