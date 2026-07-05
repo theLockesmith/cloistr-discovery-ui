@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Header, Footer, ToastProvider, SharedAuthProvider } from '@cloistr/ui/components';
+import { Header, Footer, ToastProvider, SharedAuthProvider, ThemeProvider } from '@cloistr/ui/components';
 import '@cloistr/ui/styles';
 import { AuthContext, createAuthStore, CollabAuthProvider } from './lib/nostr';
 import { RelayList, RelayMap, FilterBar, RecommendationWizard, CompareBar, CompareView } from './components';
@@ -116,13 +116,15 @@ function AppContent() {
 // Main App component - wraps with SharedAuthProvider for cross-domain SSO
 function App() {
   return (
-    <ToastProvider>
-      <SharedAuthProvider>
-        <CollabAuthProvider>
-          <AppContent />
-        </CollabAuthProvider>
-      </SharedAuthProvider>
-    </ToastProvider>
+    <ThemeProvider>
+      <ToastProvider>
+        <SharedAuthProvider>
+          <CollabAuthProvider>
+            <AppContent />
+          </CollabAuthProvider>
+        </SharedAuthProvider>
+      </ToastProvider>
+    </ThemeProvider>
   );
 }
 
