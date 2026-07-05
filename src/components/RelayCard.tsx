@@ -18,10 +18,10 @@ export function RelayCard({ relay, selected, onSelect, selectionDisabled }: Rela
 
   const healthColor = () => {
     switch (relay.health) {
-      case 'online': return '#22c55e';
-      case 'degraded': return '#eab308';
-      case 'offline': return '#ef4444';
-      default: return '#6b7280';
+      case 'online': return 'var(--cloistr-success)';
+      case 'degraded': return 'var(--cloistr-warning)';
+      case 'offline': return 'var(--cloistr-error)';
+      default: return 'var(--cloistr-text-muted)';
     }
   };
 
