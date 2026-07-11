@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Header, Footer, ToastProvider, SharedAuthProvider, ThemeProvider } from '@cloistr/ui/components';
 import '@cloistr/ui/styles';
-import { AuthContext, createAuthStore, CollabAuthProvider } from './lib/nostr';
+import { AuthContext, createAuthStore } from './lib/nostr';
 import { RelayList, RelayMap, FilterBar, RecommendationWizard, CompareBar, CompareView } from './components';
 import type { Relay, RelayFilters } from './lib/types';
 import './App.css';
@@ -113,15 +113,18 @@ function AppContent() {
   );
 }
 
-// Main App component - wraps with SharedAuthProvider for cross-domain SSO
+// Main App component - wraps with SharedAuthProvider for cross-domain SSO.
+// SharedAuthProvider already renders the @cloistr/auth AuthProvider internally
+// (and its SessionSyncManager drives the SSO connect on THAT instance). Nesting
+// a second AuthProvider (CollabAuthProvider) here shadowed it: useNostrAuth() in
+// the Header read the inner, SSO-untouched instance, so the header stayed on
+// "Sign In" even though the nostrconnect handshake completed. One provider only.
 function App() {
   return (
     <ThemeProvider>
       <ToastProvider>
         <SharedAuthProvider>
-          <CollabAuthProvider>
-            <AppContent />
-          </CollabAuthProvider>
+          <AppContent />
         </SharedAuthProvider>
       </ToastProvider>
     </ThemeProvider>
