@@ -14,6 +14,9 @@ variables:
 include:
   - project: 'coldforge/ci-templates'
     ref: main
+    file: '/templates/kaniko-build.yml'
+  - project: 'coldforge/ci-templates'
+    ref: main
     file: '/templates/frontend-smoke.yml'
 
 # Auto-update @cloistr/ui when triggered from upstream
@@ -59,25 +62,19 @@ test:
       - node_modules/
       - .pnpm-store/
 
-# Build container image (skip when triggered from upstream)
+# Build container image via the shared template (runs on default branch +
+# merge_request + renovate/* so Renovate MRs get a green build+smoke pipeline
+# and can auto-merge; pushes :latest only on the default branch). The extra
+# UPSTREAM_TRIGGER skip is preserved for the legacy upstream-trigger flow.
 build:
+  extends: .kaniko-build
   stage: build
-  image:
-    name: gcr.io/kaniko-project/executor:debug
-    entrypoint: [""]
   rules:
     - if: '$UPSTREAM_TRIGGER == "true"'
       when: never
-    - if: '$CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "master"'
-  script:
-    - mkdir -p /kaniko/.docker
-    - echo "{\"auths\":{\"${CI_REGISTRY}\":{\"username\":\"${CI_REGISTRY_USER}\",\"password\":\"${CI_REGISTRY_PASSWORD}\"}}}" > /kaniko/.docker/config.json
-    - /kaniko/executor
-      --context=${CI_PROJECT_DIR}
-      --dockerfile=${CI_PROJECT_DIR}/Dockerfile
-      --destination=${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}
-      --destination=${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHA}
-      --destination=${CI_REGISTRY_IMAGE}:latest
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH =~ /^renovate\// && $CI_OPEN_MERGE_REQUESTS == null'
 
 # Smoke-test gate: load built image in real Chromium (with crypto.randomUUID polyfill)
 smoke-test:
