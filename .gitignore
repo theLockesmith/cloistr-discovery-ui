@@ -25,3 +25,8 @@ dist-ssr
 CLAUDE.md
 .claude
 .claude/
+
+# Only one lockfile. This repo installs with `pnpm install --frozen-lockfile`, so pnpm-lock.yaml is
+# the only authoritative one; a stray package-lock.json resolves a DIFFERENT
+# dependency tree and silently diverges from what CI actually builds.
+package-lock.json
