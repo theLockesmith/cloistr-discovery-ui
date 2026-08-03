@@ -21,8 +21,8 @@ importers:
         specifier: ^1.9.4
         version: 1.9.4
       nostr-tools:
-        specifier: ^2.23.1
-        version: 2.23.1(typescript@5.9.3)
+        specifier: ^2.24.1
+        version: 2.24.1(typescript@5.9.3)
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -690,8 +690,8 @@ packages:
   node-releases@2.0.27:
     resolution: {integrity: sha512-nmh3lCkYZ3grZvqcCH+fjmQ7X+H0OeZgP40OierEaAptX4XofMh5kwNbWh7lBduUzCcV/8kZ+NDLCwm2iorIlA==}
 
-  nostr-tools@2.23.1:
-    resolution: {integrity: sha512-Q5SJ1omrseBFXtLwqDhufpFLA6vX3rS/IuBCc974qaYX6YKGwEPxa/ZsyxruUOr+b+5EpWL2hFmCB5AueYrfBw==}
+  nostr-tools@2.24.1:
+    resolution: {integrity: sha512-KdrKjC74n/rr6J3eCSfZj8dcbZFvolHYe4S22SefNZ5YWbhHiB0KL/mmJjEZ0u6B9mZK0YcQtl+WQ46KzwapeQ==}
     peerDependencies:
       typescript: '>=5.0.0'
     peerDependenciesMeta:
@@ -995,7 +995,7 @@ snapshots:
 
   '@cloistr/auth@0.4.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.9.3)':
     dependencies:
-      nostr-tools: 2.23.1(typescript@5.9.3)
+      nostr-tools: 2.24.1(typescript@5.9.3)
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
     transitivePeerDependencies:
@@ -1008,7 +1008,7 @@ snapshots:
       '@types/libsodium-wrappers': 0.7.14
       lib0: 0.2.117
       libsodium-wrappers: 0.8.4
-      nostr-tools: 2.23.1(typescript@5.9.3)
+      nostr-tools: 2.24.1(typescript@5.9.3)
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
       y-indexeddb: 9.0.12(yjs@13.6.30)
@@ -1417,7 +1417,7 @@ snapshots:
 
   node-releases@2.0.27: {}
 
-  nostr-tools@2.23.1(typescript@5.9.3):
+  nostr-tools@2.24.1(typescript@5.9.3):
     dependencies:
       '@noble/ciphers': 2.1.1
       '@noble/curves': 2.0.1
