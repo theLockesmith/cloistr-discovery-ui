@@ -21,8 +21,15 @@ export interface Relay {
   // Optional fields (may be added to backend later)
   contact?: string;
   uptime_percent?: number;
+  // `topics` and `atmosphere` are DERIVED server-side from annotation counts:
+  // topics is ranked highest-count-first, atmosphere is the single highest.
+  // The *_counts fields carry the full distribution, so a chip can be weighted
+  // or labelled (`bitcoin (12)`) without another request — and so a 12-vs-11
+  // split is distinguishable from unanimity, which the scalar alone hides.
   topics?: string[];
+  topic_counts?: Record<string, number>;
   atmosphere?: string;
+  atmosphere_counts?: Record<string, number>;
   moderation?: 'unmoderated' | 'light' | 'active' | 'strict';
   content_policy?: 'anything' | 'sfw' | 'nsfw-allowed' | 'nsfw-only';
   languages?: string[];
