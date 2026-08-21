@@ -15,6 +15,9 @@
   --radius-sm: var(--cloistr-radius-sm);
   --radius-md: var(--cloistr-radius-md);
   --radius-lg: var(--cloistr-radius-lg);
+  /* Shadow and overlay tokens — these refer to cloistr-ui vars so they adapt in light mode */
+  --color-shadow-md: var(--cloistr-shadow-md);
+  --color-overlay: rgba(0, 0, 0, 0.8);
 }
 
 * {
@@ -555,22 +558,22 @@ a:hover {
 }
 
 .tag-topic {
-  background: rgba(139, 92, 246, 0.2);
+  background: color-mix(in srgb, var(--color-primary) 20%, transparent);
   color: var(--color-primary);
 }
 
 .tag-atmosphere {
-  background: rgba(34, 197, 94, 0.2);
+  background: color-mix(in srgb, var(--color-success) 20%, transparent);
   color: var(--color-success);
 }
 
 .tag-moderation {
-  background: rgba(234, 179, 8, 0.2);
+  background: color-mix(in srgb, var(--color-warning) 20%, transparent);
   color: var(--color-warning);
 }
 
 .tag-content {
-  background: rgba(239, 68, 68, 0.2);
+  background: color-mix(in srgb, var(--color-error) 20%, transparent);
   color: var(--color-error);
 }
 
@@ -646,7 +649,7 @@ a:hover {
 }
 
 .error-message {
-  background: rgba(239, 68, 68, 0.1);
+  background: color-mix(in srgb, var(--color-error) 10%, transparent);
   border: 1px solid var(--color-error);
   border-radius: var(--radius-md);
   padding: 1rem;
@@ -664,7 +667,7 @@ a:hover {
 .wizard-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.8);
+  background: var(--color-overlay);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -770,7 +773,7 @@ a:hover {
 
 .wizard-option.selected {
   border-color: var(--color-primary);
-  background: rgba(139, 92, 246, 0.1);
+  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
 }
 
 .wizard-option .option-label {
@@ -865,7 +868,7 @@ a:hover {
 }
 
 .wizard-error {
-  background: rgba(239, 68, 68, 0.1);
+  background: color-mix(in srgb, var(--color-error) 10%, transparent);
   border: 1px solid var(--color-error);
   border-radius: var(--radius-md);
   padding: 0.75rem;
@@ -1033,7 +1036,7 @@ a:hover {
   top: 1rem;
   left: 1rem;
   right: 1rem;
-  background: rgba(239, 68, 68, 0.9);
+  background: color-mix(in srgb, var(--color-error) 90%, transparent);
   color: white;
   padding: 0.75rem;
   border-radius: var(--radius-md);
@@ -1078,7 +1081,7 @@ a:hover {
   font-size: 0.75rem;
   font-weight: 600;
   color: white;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  box-shadow: var(--color-shadow-md);
   cursor: pointer;
   transition: transform 0.2s;
 }
@@ -1095,7 +1098,7 @@ a:hover {
   border-radius: var(--radius-sm) !important;
   padding: 0.5rem 0.75rem !important;
   font-size: 0.875rem !important;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+  box-shadow: var(--color-shadow-md) !important;
 }
 
 .relay-tooltip::before {
@@ -1238,7 +1241,7 @@ a:hover {
 
 .relay-card-selected {
   border-color: var(--color-primary);
-  background: rgba(139, 92, 246, 0.05);
+  background: color-mix(in srgb, var(--color-primary) 5%, transparent);
 }
 
 .relay-checkbox {
@@ -1301,7 +1304,7 @@ a:hover {
   border-top: 1px solid var(--color-border);
   padding: 1rem;
   z-index: 900;
-  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 -4px 12px color-mix(in srgb, #000 30%, transparent);
 }
 
 .compare-bar-content {
@@ -1394,7 +1397,7 @@ a:hover {
 .compare-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.85);
+  background: var(--color-overlay);
   display: flex;
   align-items: flex-start;
   justify-content: center;
@@ -1491,7 +1494,7 @@ a:hover {
 }
 
 .compare-best {
-  background: rgba(34, 197, 94, 0.1);
+  background: color-mix(in srgb, var(--color-success) 10%, transparent);
   color: var(--color-success);
   font-weight: 500;
 }
@@ -1567,5 +1570,48 @@ a:hover {
 
   .relay-footer .btn {
     width: 100%;
+  }
+}
+
+/* Mobile layout fixes — 600px and below */
+@media (max-width: 600px) {
+  /* Fix: sort-controls overflows 28px at 375px.
+   * Stack the header so the count and sort row each fill their own line.
+   * Wrap sort buttons so they reflow rather than overflow the viewport. */
+  .relay-list-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .sort-controls {
+    flex-wrap: wrap;
+  }
+
+  /* Fix: .clear-btn right edge clips 2px past viewport.
+   * Tighten the search-box gap at narrow widths; the input already flex-shrinks. */
+  .search-box {
+    gap: 0.5rem;
+  }
+
+  /* Fix: .relay-map height of 600px consumes the full screen at 375x667.
+   * Reduce to 300px so filters and the relay list remain accessible without scrolling. */
+  .relay-map {
+    height: 300px;
+  }
+
+  /* Fix: .map-panel (320px wide) fills the 327px map container at 375px.
+   * Reposition to a bottom sheet — full width, fixed height — so the map
+   * stays visible above it. A close button remains accessible in the header. */
+  .map-panel {
+    position: fixed;
+    top: auto;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    max-height: 40vh;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    border-bottom: none;
   }
 }
