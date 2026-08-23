@@ -18,6 +18,8 @@
   /* Shadow and overlay tokens — these refer to cloistr-ui vars so they adapt in light mode */
   --color-shadow-md: var(--cloistr-shadow-md);
   --color-overlay: rgba(0, 0, 0, 0.8);
+  /* Shadow colour used in color-mix(); always dark regardless of theme */
+  --color-shadow-base: rgba(0, 0, 0, 0.3);
 }
 
 * {
@@ -43,7 +45,7 @@ a:hover {
 
 /* App layout */
 .app {
-  min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
 }
@@ -116,6 +118,7 @@ a:hover {
 /* Buttons */
 .btn {
   padding: 0.5rem 1rem;
+  min-height: 44px;
   border-radius: var(--radius-md);
   border: none;
   cursor: pointer;
@@ -460,6 +463,7 @@ a:hover {
 
 .sort-btn {
   padding: 0.375rem 0.75rem;
+  min-height: 44px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--color-border);
   background: var(--color-surface-elevated);
@@ -707,6 +711,12 @@ a:hover {
   cursor: pointer;
   padding: 0;
   line-height: 1;
+  /* Touch target: 44x44px minimum */
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .wizard-close:hover {
@@ -1304,7 +1314,7 @@ a:hover {
   border-top: 1px solid var(--color-border);
   padding: 1rem;
   z-index: 900;
-  box-shadow: 0 -4px 12px color-mix(in srgb, #000 30%, transparent);
+  box-shadow: 0 -4px 12px var(--color-shadow-base);
 }
 
 .compare-bar-content {
@@ -1362,6 +1372,12 @@ a:hover {
   padding: 0;
   font-size: 1rem;
   line-height: 1;
+  /* Touch target: 44x44px minimum */
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .compare-bar-relay-remove:hover {
@@ -1436,6 +1452,12 @@ a:hover {
   cursor: pointer;
   padding: 0;
   line-height: 1;
+  /* Touch target: 44x44px minimum */
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .compare-close:hover {
@@ -1613,5 +1635,117 @@ a:hover {
     max-height: 40vh;
     border-radius: var(--radius-lg) var(--radius-lg) 0 0;
     border-bottom: none;
+  }
+}
+
+/* -----------------------------------------------------------------------
+ * Compare view: mobile-stacked card layout
+ * On narrow screens the multi-column grid becomes a horizontal scroll trap.
+ * Instead, hide the grid and show one attribute-list card per relay.
+ * ----------------------------------------------------------------------- */
+
+/* Mobile card layout (hidden on desktop) */
+.compare-mobile-cards {
+  display: none;
+}
+
+.compare-mobile-card {
+  background: var(--color-surface-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.compare-mobile-card + .compare-mobile-card {
+  margin-top: 0.75rem;
+}
+
+.compare-mobile-card-header {
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  padding: 0.75rem 1rem;
+}
+
+.compare-mobile-card-header strong {
+  display: block;
+  font-size: 1rem;
+}
+
+.compare-mobile-card-header .compare-url {
+  margin-top: 0.25rem;
+  display: block;
+}
+
+.compare-mobile-attr {
+  display: grid;
+  grid-template-columns: 90px 1fr;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-bottom: 1px solid var(--color-border);
+  font-size: 0.875rem;
+  align-items: center;
+}
+
+.compare-mobile-attr:last-child {
+  border-bottom: none;
+}
+
+.compare-mobile-label {
+  color: var(--color-text-muted);
+  font-weight: 500;
+  font-size: 0.8rem;
+}
+
+.compare-mobile-value {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  flex-wrap: wrap;
+}
+
+/* On screens where two or three relay columns would require horizontal scroll,
+ * switch from the grid to the stacked card layout.
+ * 390px is the iPhone 13 viewport width. */
+@media (max-width: 600px) {
+  /* Tighten compare overlay padding so the close button and modal top are
+   * visible without the 2rem side gutters eating width. */
+  .compare-overlay {
+    padding: 0.5rem;
+    align-items: flex-start;
+    padding-top: env(safe-area-inset-top, 0.5rem);
+  }
+
+  .compare-modal {
+    max-height: 96dvh;
+    overflow-y: auto;
+    border-radius: var(--radius-md);
+  }
+
+  .compare-content {
+    padding: 0.75rem;
+    overflow-x: visible;  /* remove horizontal scroll trap */
+  }
+
+  /* Hide the desktop grid on small screens */
+  .compare-grid {
+    display: none;
+  }
+
+  /* Show the mobile card layout */
+  .compare-mobile-cards {
+    display: block;
+  }
+
+  /* Compare bar: stack into two rows so relay chips and action buttons
+   * each get a full-width row on phones. */
+  .compare-bar-content {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+
+  .compare-bar-actions {
+    flex-direction: row;
+    justify-content: flex-end;
   }
 }
