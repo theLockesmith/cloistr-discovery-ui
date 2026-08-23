@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { api } from '../lib/api';
 import { useAuth } from '../lib/nostr';
 import type { Relay } from '../lib/types';
+import { SignerRecovery } from '@cloistr/ui/components';
 
 type UseCase = 'general' | 'developer' | 'creator';
 type Performance = 'fastest' | 'balanced' | 'any';
@@ -22,6 +23,11 @@ export function RecommendationWizard({ isOpen, onClose }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [addingRelay, setAddingRelay] = useState<string | null>(null);
+  // When signing fails, record the error and the relay URL so the recovery
+  // screen can offer Retry. Never log out on a signing failure.
+  const [signerError, setSignerError] = useState<unknown>(null);
+  const [failedUrl, setFailedUrl] = useState<string | null>(null);
+  const [isRetrying, setIsRetrying] = useState(false);
 
   const reset = () => {
     setStep(1);
@@ -117,11 +123,28 @@ export function RecommendationWizard({ isOpen, onClose }: Props) {
     setAddingRelay(url);
     try {
       await auth.addRelay(url);
+      setSignerError(null);
+      setFailedUrl(null);
     } catch (err) {
-      console.error('Failed to add relay:', err);
+      // withSignerRetry inside addRelay exhausted retries for retryable
+      // failures. Show SignerRecovery — never log out.
+      setFailedUrl(url);
+      setSignerError(err);
     } finally {
       setAddingRelay(null);
     }
+  };
+
+  const handleRetry = async () => {
+    if (!failedUrl) return;
+    setIsRetrying(true);
+    await handleAddRelay(failedUrl);
+    setIsRetrying(false);
+  };
+
+  const handleRecoveryGoBack = () => {
+    setSignerError(null);
+    setFailedUrl(null);
   };
 
   const useCaseOptions = [
@@ -247,7 +270,16 @@ export function RecommendationWizard({ isOpen, onClose }: Props) {
                         </div>
                       </div>
                       <div className="wizard-relay-action">
-                        {auth.state.pubkey ? (
+                        {signerError && failedUrl === relay.url ? (
+                          /* Signing failed for this relay. Offer recovery rather
+                             than a login prompt — the session is still valid. */
+                          <SignerRecovery
+                            error={signerError}
+                            onRetry={handleRetry}
+                            onGoBack={handleRecoveryGoBack}
+                            retrying={isRetrying}
+                          />
+                        ) : auth.state.pubkey ? (
                           auth.hasRelay(relay.url) ? (
                             <span className="wizard-added">Added</span>
                           ) : (
