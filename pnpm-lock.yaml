@@ -21,8 +21,8 @@ importers:
         specifier: ^1.9.4
         version: 1.9.4
       nostr-tools:
-        specifier: ^2.24.3
-        version: 2.24.3(typescript@5.9.3)
+        specifier: ^2.25.0
+        version: 2.25.0(typescript@5.9.3)
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -709,16 +709,16 @@ packages:
     resolution: {integrity: sha512-D9UOmYG3UH1V+ENW56t5QXBwJw1YEY18ruVeus89Rw+SyIgjPkCO84bRzO3uNIYosJbNwiabWVn48o3uJLjxFQ==}
     engines: {node: '>=18'}
 
-  nostr-tools@2.24.2:
-    resolution: {integrity: sha512-nVf8tvsDPsZvvtT5csRTrMrdrhTId8wl3IgDHt1BWCuL6J+IlmBOW68SCl7SQ6K0PoxenpLPHSKLo4yj49JybA==}
+  nostr-tools@2.24.3:
+    resolution: {integrity: sha512-8vPgdWuje+H0v2bnxo1/hZOi8VLLMqGjfO+Oxqkx+J22r76rIt/iICKZKBoTXWAP2qTYKCQv89M4A3PRc48JYw==}
     peerDependencies:
       typescript: '>=5.0.0'
     peerDependenciesMeta:
       typescript:
         optional: true
 
-  nostr-tools@2.24.3:
-    resolution: {integrity: sha512-8vPgdWuje+H0v2bnxo1/hZOi8VLLMqGjfO+Oxqkx+J22r76rIt/iICKZKBoTXWAP2qTYKCQv89M4A3PRc48JYw==}
+  nostr-tools@2.25.0:
+    resolution: {integrity: sha512-AFdf2jv7F5CtLTwZ0JlQS+Ms+Mo7a8w3pASikHEA2dr4M2Mk5eCDZGaOYfDXlauVzx5b7c5H0F6WQsEFiKlW3Q==}
     peerDependencies:
       typescript: '>=5.0.0'
     peerDependenciesMeta:
@@ -1022,7 +1022,7 @@ snapshots:
 
   '@cloistr/auth@0.4.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.9.3)':
     dependencies:
-      nostr-tools: 2.24.2(typescript@5.9.3)
+      nostr-tools: 2.24.3(typescript@5.9.3)
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
     transitivePeerDependencies:
@@ -1043,7 +1043,7 @@ snapshots:
       '@types/libsodium-wrappers': 0.7.14
       lib0: 0.2.117
       libsodium-wrappers: 0.8.4
-      nostr-tools: 2.24.2(typescript@5.9.3)
+      nostr-tools: 2.24.3(typescript@5.9.3)
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
       y-indexeddb: 9.0.12(yjs@13.6.32)
@@ -1457,7 +1457,7 @@ snapshots:
 
   node-releases@2.0.53: {}
 
-  nostr-tools@2.24.2(typescript@5.9.3):
+  nostr-tools@2.24.3(typescript@5.9.3):
     dependencies:
       '@noble/ciphers': 2.1.1
       '@noble/curves': 2.0.1
@@ -1469,7 +1469,7 @@ snapshots:
     optionalDependencies:
       typescript: 5.9.3
 
-  nostr-tools@2.24.3(typescript@5.9.3):
+  nostr-tools@2.25.0(typescript@5.9.3):
     dependencies:
       '@noble/ciphers': 2.1.1
       '@noble/curves': 2.0.1
