@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import type { Relay } from '../lib/types';
 import { useAuth } from '../lib/nostr';
 import { getCountryName } from '../lib/countries';
+import { SignerRecovery } from '@cloistr/ui/components';
 
 interface Props {
   relays: Relay[];
@@ -12,6 +13,11 @@ interface Props {
 export function CompareView({ relays, isOpen, onClose }: Props) {
   const auth = useAuth();
   const [addingRelay, setAddingRelay] = useState<string | null>(null);
+  // When a signing call fails, record the error and the relay URL that failed.
+  // Show SignerRecovery for that relay's action cell. Never log out.
+  const [signerError, setSignerError] = useState<unknown>(null);
+  const [failedUrl, setFailedUrl] = useState<string | null>(null);
+  const [isRetrying, setIsRetrying] = useState(false);
 
   const handleBackdropClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) {
@@ -25,11 +31,29 @@ export function CompareView({ relays, isOpen, onClose }: Props) {
     setAddingRelay(url);
     try {
       await auth.addRelay(url);
+      setSignerError(null);
+      setFailedUrl(null);
     } catch (err) {
-      console.error('Failed to add relay:', err);
+      // withSignerRetry inside addRelay exhausted retries for retryable
+      // failures. What arrives here is terminal, a timeout, or a persistent
+      // connection failure. Show recovery — never log out.
+      setFailedUrl(url);
+      setSignerError(err);
     } finally {
       setAddingRelay(null);
     }
+  };
+
+  const handleRetry = async () => {
+    if (!failedUrl) return;
+    setIsRetrying(true);
+    await handleAddRelay(failedUrl);
+    setIsRetrying(false);
+  };
+
+  const handleRecoveryGoBack = () => {
+    setSignerError(null);
+    setFailedUrl(null);
   };
 
   // Find best values for highlighting
@@ -204,7 +228,16 @@ export function CompareView({ relays, isOpen, onClose }: Props) {
               <div className="compare-label">Action</div>
               {relays.map((relay) => (
                 <div key={relay.url} className="compare-cell">
-                  {auth.state.pubkey ? (
+                  {signerError && failedUrl === relay.url ? (
+                    /* Signing failed for this relay. Show recovery screen rather
+                       than a login prompt — the session is still valid. */
+                    <SignerRecovery
+                      error={signerError}
+                      onRetry={handleRetry}
+                      onGoBack={handleRecoveryGoBack}
+                      retrying={isRetrying}
+                    />
+                  ) : auth.state.pubkey ? (
                     auth.hasRelay(relay.url) ? (
                       <span className="compare-added">Already added</span>
                     ) : (
@@ -299,7 +332,19 @@ export function CompareView({ relays, isOpen, onClose }: Props) {
                   </span>
                 </div>
 
-                {auth.state.pubkey && (
+                {signerError && failedUrl === relay.url ? (
+                  <div className="compare-mobile-attr">
+                    <span className="compare-mobile-label">Action</span>
+                    <span className="compare-mobile-value">
+                      <SignerRecovery
+                        error={signerError}
+                        onRetry={handleRetry}
+                        onGoBack={handleRecoveryGoBack}
+                        retrying={isRetrying}
+                      />
+                    </span>
+                  </div>
+                ) : auth.state.pubkey ? (
                   <div className="compare-mobile-attr">
                     <span className="compare-mobile-label">Action</span>
                     <span className="compare-mobile-value">
@@ -316,7 +361,7 @@ export function CompareView({ relays, isOpen, onClose }: Props) {
                       )}
                     </span>
                   </div>
-                )}
+                ) : null}
               </div>
             ))}
           </div>

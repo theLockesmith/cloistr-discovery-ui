@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Header, Footer, ToastProvider, SharedAuthProvider, ThemeProvider } from '@cloistr/ui/components';
 import '@cloistr/ui/styles';
 import { AuthContext, createAuthStore } from './lib/nostr';
+import { useRelayReconnect } from './lib/useRelayReconnect';
 import { RelayList, RelayMap, FilterBar, RecommendationWizard, CompareBar, CompareView } from './components';
 import type { Relay, RelayFilters } from './lib/types';
 import './App.css';
@@ -13,6 +14,16 @@ const MAX_COMPARE = 3;
 function AppContent() {
   const auth = createAuthStore();
   const [filters, setFilters] = useState<RelayFilters>({ health: 'online' });
+
+  // Part 4 of signer resilience: reconnect relay WebSockets when the page
+  // regains visibility (tab switch, app-switcher, lock screen unlock) or the
+  // network comes back. This runs before the user acts so a backgrounded
+  // NIP-46 signer is warmed up before the next signing call.
+  //
+  // @cloistr/ui 0.27.0 wires this into SharedAuthProvider automatically.
+  // When 0.27.0 is published and the lockfile is regenerated, remove this
+  // call and delete src/lib/useRelayReconnect.ts.
+  useRelayReconnect();
   const [showWizard, setShowWizard] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [selectedRelays, setSelectedRelays] = useState<Relay[]>([]);

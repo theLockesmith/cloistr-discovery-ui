@@ -11,6 +11,7 @@ import {
   useNostrAuth,
   type SignerInterface,
 } from '@cloistr/auth';
+import { withSignerRetry } from '@cloistr/ui';
 import type { AuthState, UserRelay } from './types';
 
 // Default relays for fetching/publishing kind 10002
@@ -100,7 +101,10 @@ async function publishRelayList(signer: SignerInterface, relays: UserRelay[]): P
     pubkey,
   };
 
-  const signedEvent = await signer.signEvent(unsignedEvent);
+  // withSignerRetry retries ONLY retryable failures (relay unreachable /
+  // socket closed). A denial (CANCELLED, REMOTE_ERROR) or a timeout
+  // (TIMEOUT) is rethrown immediately so the caller can show SignerRecovery.
+  const signedEvent = await withSignerRetry(() => signer.signEvent(unsignedEvent));
 
   await Promise.allSettled(
     DEFAULT_RELAYS.map(relay => pool.publish([relay], signedEvent as Event))
