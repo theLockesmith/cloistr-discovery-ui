@@ -51,6 +51,7 @@ test:
     - corepack enable && corepack prepare pnpm@10.29.3 --activate
     - pnpm install --frozen-lockfile
   script:
+    - pnpm test
     - pnpm build
   cache:
     key: ${CI_COMMIT_REF_SLUG}

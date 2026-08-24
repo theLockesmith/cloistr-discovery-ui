@@ -68,10 +68,11 @@ export function CompareView({ relays, isOpen, onClose }: Props) {
       <div className="compare-modal">
         <div className="compare-header">
           <h2>Compare Relays</h2>
-          <button className="compare-close" onClick={onClose}>&times;</button>
+          <button className="compare-close" onClick={onClose} aria-label="Close comparison">&times;</button>
         </div>
 
         <div className="compare-content">
+          {/* Desktop grid layout: shown above 600px */}
           <div className="compare-grid" style={{ '--cols': relays.length } as React.CSSProperties}>
             {/* Header row - Relay names */}
             <div className="compare-row compare-row-header">
@@ -221,6 +222,103 @@ export function CompareView({ relays, isOpen, onClose }: Props) {
                 </div>
               ))}
             </div>
+          </div>
+
+          {/* Mobile stacked card layout: shown at 600px and below (via CSS) */}
+          <div className="compare-mobile-cards">
+            {relays.map((relay) => (
+              <div key={relay.url} className="compare-mobile-card">
+                <div className="compare-mobile-card-header">
+                  <strong>{relay.name || 'Unnamed'}</strong>
+                  <span className="compare-url">{relay.url}</span>
+                </div>
+
+                <div className="compare-mobile-attr">
+                  <span className="compare-mobile-label">Health</span>
+                  <span className={`compare-mobile-value ${isBestHealth(relay) ? 'compare-best' : ''}`}>
+                    <span className={`health-dot health-${relay.health}`} />
+                    {relay.health}
+                  </span>
+                </div>
+
+                <div className="compare-mobile-attr">
+                  <span className="compare-mobile-label">Latency</span>
+                  <span className={`compare-mobile-value ${isBestLatency(relay) ? 'compare-best' : ''}`}>
+                    {relay.latency_ms}ms
+                  </span>
+                </div>
+
+                <div className="compare-mobile-attr">
+                  <span className="compare-mobile-label">Uptime</span>
+                  <span className={`compare-mobile-value ${isBestUptime(relay) ? 'compare-best' : ''}`}>
+                    {relay.uptime_percent?.toFixed(1) || '?'}%
+                  </span>
+                </div>
+
+                <div className="compare-mobile-attr">
+                  <span className="compare-mobile-label">NIPs</span>
+                  <span className="compare-mobile-value">
+                    {relay.supported_nips?.length || 0} supported
+                  </span>
+                </div>
+
+                <div className="compare-mobile-attr">
+                  <span className="compare-mobile-label">Moderation</span>
+                  <span className="compare-mobile-value">{relay.moderation || 'unknown'}</span>
+                </div>
+
+                <div className="compare-mobile-attr">
+                  <span className="compare-mobile-label">Content</span>
+                  <span className="compare-mobile-value">{relay.content_policy || 'unknown'}</span>
+                </div>
+
+                <div className="compare-mobile-attr">
+                  <span className="compare-mobile-label">Payment</span>
+                  <span className={`compare-mobile-value payment-badge ${relay.payment_required ? 'payment-paid' : 'payment-free'}`}>
+                    {relay.payment_required ? 'paid' : 'free'}
+                  </span>
+                </div>
+
+                <div className="compare-mobile-attr">
+                  <span className="compare-mobile-label">Auth</span>
+                  <span className="compare-mobile-value">{relay.auth_required ? 'required' : 'open'}</span>
+                </div>
+
+                <div className="compare-mobile-attr">
+                  <span className="compare-mobile-label">Location</span>
+                  <span className="compare-mobile-value">
+                    {getCountryName(relay.country_code) || relay.location || 'unknown'}
+                  </span>
+                </div>
+
+                <div className="compare-mobile-attr">
+                  <span className="compare-mobile-label">Software</span>
+                  <span className="compare-mobile-value">
+                    {relay.software || 'unknown'}
+                    {relay.version && <span className="compare-version"> v{relay.version}</span>}
+                  </span>
+                </div>
+
+                {auth.state.pubkey && (
+                  <div className="compare-mobile-attr">
+                    <span className="compare-mobile-label">Action</span>
+                    <span className="compare-mobile-value">
+                      {auth.hasRelay(relay.url) ? (
+                        <span className="compare-added">Already added</span>
+                      ) : (
+                        <button
+                          className="btn btn-add"
+                          onClick={() => handleAddRelay(relay.url)}
+                          disabled={addingRelay === relay.url}
+                        >
+                          {addingRelay === relay.url ? 'Adding...' : 'Add to My Relays'}
+                        </button>
+                      )}
+                    </span>
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
         </div>
       </div>
