@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Header, Footer, ToastProvider, SharedAuthProvider, ThemeProvider } from '@cloistr/ui/components';
 import '@cloistr/ui/styles';
-import { AuthContext, createAuthStore } from './lib/nostr';
+import { AuthContext, useAuthStore } from './lib/nostr';
 import { useRelayReconnect } from './lib/useRelayReconnect';
 import { RelayList, RelayMap, FilterBar, RecommendationWizard, CompareBar, CompareView } from './components';
 import type { Relay, RelayFilters } from './lib/types';
@@ -12,7 +12,7 @@ const MAX_COMPARE = 3;
 
 // Inner component that uses auth - must be inside CollabAuthProvider
 function AppContent() {
-  const auth = createAuthStore();
+  const auth = useAuthStore();
   const [filters, setFilters] = useState<RelayFilters>({ health: 'online' });
 
   // Part 4 of signer resilience: reconnect relay WebSockets when the page

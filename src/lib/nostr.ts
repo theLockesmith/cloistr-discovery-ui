@@ -112,9 +112,14 @@ async function publishRelayList(signer: SignerInterface, relays: UserRelay[]): P
 }
 
 /**
- * Auth store hook - wraps collab-common auth with relay list management
+ * Auth store hook - wraps collab-common auth with relay list management.
+ *
+ * MUST be named `use*`: it calls useNostrAuth/useState/useMemo/useCallback, so
+ * the react-hooks ESLint rules only apply to it under a hook-shaped name. As
+ * `createAuthStore` the linter treated it as an ordinary function and could not
+ * see the hook calls inside it.
  */
-export function createAuthStore() {
+export function useAuthStore() {
   const collabAuth = useNostrAuth();
   const [relayList, setRelayList] = useState<UserRelay[]>([]);
   const [isLoading, setIsLoading] = useState(false);
