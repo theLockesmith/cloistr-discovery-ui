@@ -9,10 +9,10 @@ importers:
   .:
     dependencies:
       '@cloistr/auth':
-        specifier: ^1.0.0
+        specifier: ^1.0.1
         version: 1.0.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.9.3)
       '@cloistr/collab-common':
-        specifier: ^0.2.15
+        specifier: ^0.2.16
         version: 0.2.16(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.9.3)
       '@cloistr/ui':
         specifier: ^0.42.0
