@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Header, Footer, ToastProvider, SharedAuthProvider, ThemeProvider } from '@cloistr/ui/components';
 import '@cloistr/ui/styles';
+import { getServiceConfig } from '@cloistr/collab-common/config';
 import { AuthContext, useAuthStore } from './lib/nostr';
 import { useRelayReconnect } from './lib/useRelayReconnect';
 import { RelayList, RelayMap, FilterBar, RecommendationWizard, CompareBar, CompareView } from './components';
@@ -8,6 +9,10 @@ import type { Relay, RelayFilters } from './lib/types';
 import './App.css';
 
 type ViewMode = 'list' | 'map';
+
+// Signer comes from runtime config; the shared components default to the
+// production signer when no URL is passed.
+const { signerUrl } = getServiceConfig();
 const MAX_COMPARE = 3;
 
 // Inner component that uses auth - must be inside CollabAuthProvider
@@ -60,7 +65,7 @@ function AppContent() {
   return (
     <AuthContext.Provider value={auth}>
       <div className="app">
-        <Header activeServiceId="discover" />
+        <Header activeServiceId="discover" signerUrl={signerUrl} />
 
         <main className="main">
           <div className="page-header">
@@ -134,7 +139,7 @@ function App() {
   return (
     <ThemeProvider>
       <ToastProvider>
-        <SharedAuthProvider>
+        <SharedAuthProvider signerUrl={signerUrl}>
           <AppContent />
         </SharedAuthProvider>
       </ToastProvider>

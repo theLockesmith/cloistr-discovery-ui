@@ -12,11 +12,13 @@ import {
   type SignerInterface,
 } from '@cloistr/auth';
 import { withSignerRetry } from '@cloistr/ui';
+import { getServiceConfig } from '@cloistr/collab-common/config';
 import type { AuthState, UserRelay } from './types';
 
-// Default relays for fetching/publishing kind 10002
+// Default relays for fetching/publishing kind 10002. The Cloistr relay comes
+// from runtime config so a staging container never talks to production.
 const DEFAULT_RELAYS = [
-  'wss://relay.cloistr.xyz',
+  getServiceConfig().relayUrl,
   'wss://relay.damus.io',
   'wss://nos.lol',
   'wss://relay.nostr.band',
