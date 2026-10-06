@@ -13,16 +13,13 @@ import {
 } from '@cloistr/auth';
 import { withSignerRetry } from '@cloistr/ui';
 import { getServiceConfig } from '@cloistr/collab-common/config';
+import { getPublicRelays } from './publicRelays';
 import type { AuthState, UserRelay } from './types';
 
-// Default relays for fetching/publishing kind 10002. The Cloistr relay comes
-// from runtime config so a staging container never talks to production.
-const DEFAULT_RELAYS = [
-  getServiceConfig().relayUrl,
-  'wss://relay.damus.io',
-  'wss://nos.lol',
-  'wss://relay.nostr.band',
-];
+// Relays for fetching/publishing kind 10002. Both the Cloistr relay and the
+// public relays come from runtime config, so a staging container talks only to
+// the staging relay.
+const DEFAULT_RELAYS = [getServiceConfig().relayUrl, ...getPublicRelays()];
 
 // Pool singleton
 const pool = new SimplePool();
