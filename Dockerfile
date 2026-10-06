@@ -29,13 +29,15 @@ COPY --from=builder /app/dist /usr/share/nginx/html
 COPY nginx.conf.template /etc/nginx/templates/default.conf.template
 
 # Production defaults: an unconfigured container behaves exactly like production.
+# CLOISTR_PUBLIC_RELAYS=auto means: public relays in production, none elsewhere,
+# so a non-production deployment that forgets it never publishes to them.
 ENV CLOISTR_RELAY_URL=wss://relay.cloistr.xyz \
     CLOISTR_SIGNER_URL=https://signer.cloistr.xyz \
     CLOISTR_BLOSSOM_URL=https://files.cloistr.xyz \
     CLOISTR_DISCOVERY_URL=https://discover.cloistr.xyz \
     CLOISTR_APP_URL=https://discover.cloistr.xyz \
     CLOISTR_ENVIRONMENT=production \
-    CLOISTR_PUBLIC_RELAYS=wss://relay.damus.io,wss://nos.lol,wss://relay.nostr.band \
+    CLOISTR_PUBLIC_RELAYS=auto \
     NGINX_ENVSUBST_FILTER=^CLOISTR_
 
 EXPOSE 8080

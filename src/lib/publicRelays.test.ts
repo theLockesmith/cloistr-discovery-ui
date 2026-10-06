@@ -12,18 +12,33 @@ describe('getPublicRelays', () => {
     expect(getPublicRelays()).toEqual(DEFAULT_PUBLIC_RELAYS);
   });
 
-  it('uses production defaults when the field is absent', () => {
-    g.__CLOISTR_CONFIG__ = { relayUrl: 'wss://relay.cloistr.xyz' };
+  it('uses production defaults for "auto" in production', () => {
+    g.__CLOISTR_CONFIG__ = { environment: 'production', publicRelays: 'auto' };
     expect(getPublicRelays()).toEqual(DEFAULT_PUBLIC_RELAYS);
   });
 
-  it('returns no relays when the field is empty (staging)', () => {
-    g.__CLOISTR_CONFIG__ = { publicRelays: '' };
+  it('returns no relays for "auto" outside production', () => {
+    g.__CLOISTR_CONFIG__ = { environment: 'staging', publicRelays: 'auto' };
     expect(getPublicRelays()).toEqual([]);
   });
 
-  it('parses a comma-separated list, trimming blanks', () => {
-    g.__CLOISTR_CONFIG__ = { publicRelays: ' wss://a.example , ,wss://b.example' };
+  it('returns no relays when the field is absent outside production', () => {
+    g.__CLOISTR_CONFIG__ = { environment: 'staging' };
+    expect(getPublicRelays()).toEqual([]);
+  });
+
+  it('treats an unsubstituted nginx variable as unset', () => {
+    g.__CLOISTR_CONFIG__ = { environment: 'staging', publicRelays: '${CLOISTR_PUBLIC_RELAYS}' };
+    expect(getPublicRelays()).toEqual([]);
+  });
+
+  it('returns no relays when explicitly empty, even in production', () => {
+    g.__CLOISTR_CONFIG__ = { environment: 'production', publicRelays: '' };
+    expect(getPublicRelays()).toEqual([]);
+  });
+
+  it('parses an explicit comma-separated list, trimming blanks', () => {
+    g.__CLOISTR_CONFIG__ = { environment: 'staging', publicRelays: ' wss://a.example , ,wss://b.example' };
     expect(getPublicRelays()).toEqual(['wss://a.example', 'wss://b.example']);
   });
 });
