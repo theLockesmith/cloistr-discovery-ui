@@ -35,6 +35,7 @@ ENV CLOISTR_RELAY_URL=wss://relay.cloistr.xyz \
     CLOISTR_DISCOVERY_URL=https://discover.cloistr.xyz \
     CLOISTR_APP_URL=https://discover.cloistr.xyz \
     CLOISTR_ENVIRONMENT=production \
+    CLOISTR_PUBLIC_RELAYS=wss://relay.damus.io,wss://nos.lol,wss://relay.nostr.band \
     NGINX_ENVSUBST_FILTER=^CLOISTR_
 
 EXPOSE 8080
