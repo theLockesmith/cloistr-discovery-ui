@@ -14,6 +14,7 @@ import {
 import { withSignerRetry } from '@cloistr/ui';
 import { getServiceConfig } from '@cloistr/collab-common/config';
 import { getPublicRelays } from './publicRelays';
+import { assertPublished, publishToRelays, QUERY_MAX_WAIT_MS } from './relayPublish';
 import type { AuthState, UserRelay } from './types';
 
 // Relays for fetching/publishing kind 10002. Both the Cloistr relay and the
@@ -54,7 +55,7 @@ async function fetchRelayList(pubkey: string): Promise<UserRelay[]> {
     kinds: [10002],
     authors: [pubkey],
     limit: 1,
-  });
+  }, { maxWait: QUERY_MAX_WAIT_MS });
 
   if (events.length === 0) {
     return [];
@@ -105,9 +106,10 @@ async function publishRelayList(signer: SignerInterface, relays: UserRelay[]): P
   // (TIMEOUT) is rethrown immediately so the caller can show SignerRecovery.
   const signedEvent = await withSignerRetry(() => signer.signEvent(unsignedEvent));
 
-  await Promise.allSettled(
-    DEFAULT_RELAYS.map(relay => pool.publish([relay], signedEvent as Event))
-  );
+  // Each relay is bounded; if none accepts, this throws and the caller shows
+  // the error instead of spinning or reporting an unsaved list as saved.
+  const outcome = await publishToRelays(pool, DEFAULT_RELAYS, signedEvent as Event);
+  assertPublished(outcome);
 }
 
 /**
@@ -182,7 +184,12 @@ export function useAuthStore() {
     const newRelayList = [...relayList, { url, read, write }];
     setRelayList(newRelayList);
 
-    await publishRelayList(collabAuth.signer, newRelayList);
+    try {
+      await publishRelayList(collabAuth.signer, newRelayList);
+    } catch (err) {
+      setRelayList(relayList); // not saved, so don't show it as saved
+      throw err;
+    }
   }, [collabAuth, relayList]);
 
   // Remove relay from user's list
@@ -194,7 +201,12 @@ export function useAuthStore() {
     const newRelayList = relayList.filter(r => r.url !== url);
     setRelayList(newRelayList);
 
-    await publishRelayList(collabAuth.signer, newRelayList);
+    try {
+      await publishRelayList(collabAuth.signer, newRelayList);
+    } catch (err) {
+      setRelayList(relayList); // not saved, so don't show it as saved
+      throw err;
+    }
   }, [collabAuth, relayList]);
 
   const hasRelay = useCallback((url: string): boolean => {
