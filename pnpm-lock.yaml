@@ -9,14 +9,14 @@ importers:
   .:
     dependencies:
       '@cloistr/auth':
-        specifier: ^1.3.0
-        version: 1.3.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.9.3)
+        specifier: ^1.4.1
+        version: 1.4.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.9.3)
       '@cloistr/collab-common':
-        specifier: ^0.4.0
-        version: 0.4.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.9.3)
+        specifier: ^0.6.0
+        version: 0.6.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.9.3)
       '@cloistr/ui':
-        specifier: ^0.43.0
-        version: 0.43.0(@cloistr/auth@1.3.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.9.3))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        specifier: ^0.44.2
+        version: 0.44.2(@cloistr/auth@1.4.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.9.3))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       leaflet:
         specifier: ^1.9.4
         version: 1.9.4
@@ -184,14 +184,20 @@ packages:
       react: ^18.0.0 || ^19.0.0
       react-dom: ^18.0.0 || ^19.0.0
 
-  '@cloistr/collab-common@0.4.0':
-    resolution: {integrity: sha1-Cmk/QY4mJiozS8sCeWADW4BZhws=, tarball: https://git.aegis-hq.xyz/api/v4/projects/44/packages/npm/@cloistr/collab-common/-/@cloistr/collab-common-0.4.0.tgz}
+  '@cloistr/auth@1.4.1':
+    resolution: {integrity: sha1-tTr4nEowrikEOMm7+V9gBM/HUyE=, tarball: https://git.aegis-hq.xyz/api/v4/projects/175/packages/npm/@cloistr/auth/-/@cloistr/auth-1.4.1.tgz}
+    peerDependencies:
+      react: ^18.0.0 || ^19.0.0
+      react-dom: ^18.0.0 || ^19.0.0
+
+  '@cloistr/collab-common@0.6.0':
+    resolution: {integrity: sha1-a7aIuUrD6m/0ubiwDng3whHQr7U=, tarball: https://git.aegis-hq.xyz/api/v4/projects/44/packages/npm/@cloistr/collab-common/-/@cloistr/collab-common-0.6.0.tgz}
     peerDependencies:
       react: ^18.3.1
       react-dom: ^18.3.1
 
-  '@cloistr/ui@0.43.0':
-    resolution: {integrity: sha1-9/pQoFzAXaB8k2aMzVnHY78HnC0=, tarball: https://git.aegis-hq.xyz/api/v4/projects/59/packages/npm/@cloistr/ui/-/@cloistr/ui-0.43.0.tgz}
+  '@cloistr/ui@0.44.2':
+    resolution: {integrity: sha1-XNyCaa5Sb8TCw3RAB4Z6xh4SJck=, tarball: https://git.aegis-hq.xyz/api/v4/projects/59/packages/npm/@cloistr/ui/-/@cloistr/ui-0.44.2.tgz}
     peerDependencies:
       '@cloistr/auth': ^0.2.0 || ^0.3.0 || ^0.4.0 || ^0.5.0 || ^0.6.0 || ^0.7.0 || ^1.0.0
       react: ^18.0.0 || ^19.0.0
@@ -1495,7 +1501,15 @@ snapshots:
     transitivePeerDependencies:
       - typescript
 
-  '@cloistr/collab-common@0.4.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.9.3)':
+  '@cloistr/auth@1.4.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.9.3)':
+    dependencies:
+      nostr-tools: 2.25.2(typescript@5.9.3)
+      react: 18.3.1
+      react-dom: 18.3.1(react@18.3.1)
+    transitivePeerDependencies:
+      - typescript
+
+  '@cloistr/collab-common@0.6.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.9.3)':
     dependencies:
       '@cloistr/auth': 1.3.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.9.3)
       '@noble/hashes': 2.4.0
@@ -1511,9 +1525,9 @@ snapshots:
     transitivePeerDependencies:
       - typescript
 
-  '@cloistr/ui@0.43.0(@cloistr/auth@1.3.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.9.3))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
+  '@cloistr/ui@0.44.2(@cloistr/auth@1.4.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.9.3))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
     dependencies:
-      '@cloistr/auth': 1.3.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.9.3)
+      '@cloistr/auth': 1.4.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.9.3)
       '@types/qrcode': 1.5.6
       qrcode: 1.5.4
       react: 18.3.1
