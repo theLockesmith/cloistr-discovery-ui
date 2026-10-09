@@ -6,7 +6,7 @@ const EVENT = { id: 'x', kind: 10002, pubkey: 'p', created_at: 1, tags: [], cont
 const never = () => new Promise<string>(() => {});
 
 function poolFor(byRelay: Record<string, () => Promise<string>>) {
-  return { publish: vi.fn((relays: string[]) => [byRelay[relays[0]]()]) };
+  return { publish: vi.fn((relays: string[]) => relays.map(r => byRelay[r]())) };
 }
 
 afterEach(() => {
@@ -42,6 +42,14 @@ describe('publishToRelays', () => {
     const pool = poolFor({ 'wss://no.example': () => Promise.reject(new Error('blocked: auth-required')) });
     const result = await publishToRelays(pool, ['wss://no.example'], EVENT, 1000);
     expect(result.refused).toEqual([{ relay: 'wss://no.example', reason: 'blocked: auth-required' }]);
+  });
+
+  it('publishes through the shared collab-common helper: one pool call for all relays', async () => {
+    const pool = poolFor({ 'wss://a.example': () => Promise.resolve('ok'), 'wss://b.example': () => Promise.resolve('ok') });
+    const result = await publishToRelays(pool, ['wss://a.example', 'wss://b.example'], EVENT, 1000);
+    expect(pool.publish).toHaveBeenCalledTimes(1);
+    expect(pool.publish.mock.calls[0][0]).toEqual(['wss://a.example', 'wss://b.example']);
+    expect(result.accepted).toEqual(['wss://a.example', 'wss://b.example']);
   });
 
   it('treats no relays at all as not saved', () => {

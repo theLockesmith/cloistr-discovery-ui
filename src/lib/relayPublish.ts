@@ -1,67 +1,43 @@
 import type { Event } from 'nostr-tools';
-
-/**
- * How long one relay may take to answer a publish, NIP-42 AUTH round trip
- * included. Matches @cloistr/collab-common's PUBLISH_TIMEOUT_MS.
- */
-export const PUBLISH_TIMEOUT_MS = 15_000;
+import {
+  boundedPoolPublish,
+  settlePoolPublish,
+  PUBLISH_TIMEOUT_MS,
+  type PublishablePool,
+} from '@cloistr/collab-common/relay';
 
 /** How long to wait for relays to return the user's relay list. */
 export const QUERY_MAX_WAIT_MS = 10_000;
-
-export class PublishTimeoutError extends Error {
-  readonly relay: string;
-
-  constructor(relay: string, timeoutMs: number) {
-    super(`${relay} did not answer within ${timeoutMs / 1000}s`);
-    this.relay = relay;
-    this.name = 'PublishTimeoutError';
-  }
-}
 
 export interface PublishOutcome {
   accepted: string[];
   refused: { relay: string; reason: string }[];
 }
 
-interface PublishPool {
-  publish(relays: string[], event: Event): Promise<string>[];
-}
-
 /**
- * Publish to each relay, bounding every one. nostr-tools' publish promise can
- * stay pending forever (a relay that never sends OK, or an AUTH the signer
- * never answers), which left the UI spinning; a relay that has not answered
- * within timeoutMs is reported as refused instead.
+ * Publish to each relay through collab-common's bounded pool publish, so a
+ * relay that never sends OK (or an AUTH the signer never answers) is reported
+ * as refused instead of leaving the UI spinning.
  */
 export async function publishToRelays(
-  pool: PublishPool,
+  pool: PublishablePool,
   relays: string[],
   event: Event,
   timeoutMs = PUBLISH_TIMEOUT_MS,
 ): Promise<PublishOutcome> {
-  const results = await Promise.allSettled(
-    relays.map(relay => {
-      let timer: ReturnType<typeof setTimeout>;
-      return Promise.race([
-        pool.publish([relay], event)[0],
-        new Promise<never>((_, reject) => {
-          timer = setTimeout(() => reject(new PublishTimeoutError(relay, timeoutMs)), timeoutMs);
-        }),
-      ]).finally(() => clearTimeout(timer));
-    }),
-  );
+  const result = await settlePoolPublish(relays, boundedPoolPublish(pool, relays, event, { timeoutMs }));
 
-  const outcome: PublishOutcome = { accepted: [], refused: [] };
-  results.forEach((r, i) => {
-    if (r.status === 'fulfilled') {
-      outcome.accepted.push(relays[i]);
-    } else {
-      const reason = r.reason instanceof Error ? r.reason.message : String(r.reason);
-      outcome.refused.push({ relay: relays[i], reason });
-    }
-  });
-  return outcome;
+  // The shared timeout error does not name the relay, so build the
+  // user-facing reason here.
+  const timedOut = new Set(result.timedOut);
+  const refused = relays
+    .filter(relay => !result.accepted.includes(relay))
+    .map(relay =>
+      timedOut.has(relay)
+        ? { relay, reason: `${relay} did not answer within ${timeoutMs / 1000}s` }
+        : result.rejected.find(r => r.relay === relay) ?? { relay, reason: 'unknown error' },
+    );
+  return { accepted: result.accepted, refused };
 }
 
 /**
