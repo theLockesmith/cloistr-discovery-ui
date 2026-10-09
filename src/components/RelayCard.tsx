@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { Relay } from '../lib/types';
 import { useAuth } from '../lib/nostr';
-import { SignerRecovery } from '@cloistr/ui/components';
+import { RelayActionRecovery } from './RelayActionRecovery';
 
 interface RelayCardProps {
   relay: Relay;
@@ -137,7 +137,7 @@ export function RelayCard({ relay, selected, onSelect, selectionDisabled }: Rela
           action buttons otherwise. Never redirect to a sign-in screen. */}
       <div className="relay-footer">
         {signerError ? (
-          <SignerRecovery
+          <RelayActionRecovery
             error={signerError}
             onRetry={handleRetry}
             onGoBack={handleGoBack}

@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import type { Relay } from '../lib/types';
 import { useAuth } from '../lib/nostr';
 import { getCountryName } from '../lib/countries';
-import { SignerRecovery } from '@cloistr/ui/components';
+import { RelayActionRecovery } from './RelayActionRecovery';
 
 interface Props {
   relays: Relay[];
@@ -231,7 +231,7 @@ export function CompareView({ relays, isOpen, onClose }: Props) {
                   {signerError && failedUrl === relay.url ? (
                     /* Signing failed for this relay. Show recovery screen rather
                        than a login prompt — the session is still valid. */
-                    <SignerRecovery
+                    <RelayActionRecovery
                       error={signerError}
                       onRetry={handleRetry}
                       onGoBack={handleRecoveryGoBack}
@@ -336,7 +336,7 @@ export function CompareView({ relays, isOpen, onClose }: Props) {
                   <div className="compare-mobile-attr">
                     <span className="compare-mobile-label">Action</span>
                     <span className="compare-mobile-value">
-                      <SignerRecovery
+                      <RelayActionRecovery
                         error={signerError}
                         onRetry={handleRetry}
                         onGoBack={handleRecoveryGoBack}

@@ -28,6 +28,7 @@ import userEvent from '@testing-library/user-event';
 import { RelayCard } from '../components/RelayCard';
 import { CompareView } from '../components/CompareView';
 import { AuthContext } from '../lib/nostr';
+import { RelayListNotSavedError } from '../lib/relayPublish';
 import type { Relay } from '../lib/types';
 
 // A retryable error: relay unreachable. withSignerRetry exhausts its budget
@@ -245,5 +246,52 @@ describe('CompareView — signer resilience', () => {
     // Must not expose any sign-in prompt.
     expect(screen.queryByText(/sign in/i)).not.toBeInTheDocument();
     expect(auth.logout).not.toHaveBeenCalled();
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Relay list not saved (no relay accepted the event): not a signer failure
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('relay list not saved — says so, not "Signing was declined"', () => {
+  const notSaved = () =>
+    new RelayListNotSavedError('wss://relay.cloistr.xyz did not answer in time; wss://nos.lol did not answer in time');
+
+  it('RelayCard shows the relay wording with Try again, and Go back restores the Add button', async () => {
+    const auth = makeAuth({ addRelay: () => Promise.reject(notSaved()) });
+    render(
+      <AuthContext.Provider value={auth}>
+        <RelayCard relay={makeRelay('wss://relay.example.com')} />
+      </AuthContext.Provider>
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: 'Add to My Relays' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Your relay list was not saved')).toBeInTheDocument();
+    });
+    expect(screen.getByText(/wss:\/\/relay.cloistr.xyz did not answer in time/)).toBeInTheDocument();
+    expect(screen.queryByText('Signing was declined')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Go back' }));
+    expect(screen.getByRole('button', { name: 'Add to My Relays' })).toBeInTheDocument();
+    expect(auth.logout).not.toHaveBeenCalled();
+  });
+
+  it('CompareView shows the relay wording too', async () => {
+    const auth = makeAuth({ addRelay: () => Promise.reject(notSaved()) });
+    render(
+      <AuthContext.Provider value={auth}>
+        <CompareView relays={[makeRelay('wss://a.example'), makeRelay('wss://b.example')]} isOpen onClose={vi.fn()} />
+      </AuthContext.Provider>
+    );
+
+    await userEvent.click(screen.getAllByRole('button', { name: 'Add to My Relays' })[0]);
+
+    await waitFor(() => {
+      expect(screen.getAllByText('Your relay list was not saved').length).toBeGreaterThan(0);
+    });
+    expect(screen.queryByText('Signing was declined')).not.toBeInTheDocument();
   });
 });

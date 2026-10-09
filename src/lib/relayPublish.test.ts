@@ -1,12 +1,14 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { Event } from 'nostr-tools';
-import { assertPublished, publishToRelays } from './relayPublish';
+import type { Event, EventTemplate } from 'nostr-tools';
+import type { PublishablePool } from '@cloistr/collab-common/relay';
+import { assertPublished, publishToRelays, RelayListNotSavedError } from './relayPublish';
 
 const EVENT = { id: 'x', kind: 10002, pubkey: 'p', created_at: 1, tags: [], content: '', sig: 's' } as Event;
 const never = () => new Promise<string>(() => {});
 
 function poolFor(byRelay: Record<string, () => Promise<string>>) {
-  return { publish: vi.fn((relays: string[]) => relays.map(r => byRelay[r]())) };
+  type Params = Parameters<PublishablePool['publish']>[2];
+  return { publish: vi.fn((relays: string[], _event?: Event, _params?: Params) => relays.map(r => byRelay[r]())) };
 }
 
 afterEach(() => {
@@ -50,6 +52,28 @@ describe('publishToRelays', () => {
     expect(pool.publish).toHaveBeenCalledTimes(1);
     expect(pool.publish.mock.calls[0][0]).toEqual(['wss://a.example', 'wss://b.example']);
     expect(result.accepted).toEqual(['wss://a.example', 'wss://b.example']);
+  });
+
+  it('answers a relay AUTH challenge with the given signer (relay.cloistr.xyz refuses unauthenticated writes)', async () => {
+    const pool = poolFor({ 'wss://auth.example': () => Promise.resolve('ok') });
+    const onauth = vi.fn(async (t: EventTemplate) => ({ ...t, sig: 'signed' }) as never);
+    await publishToRelays(pool, ['wss://auth.example'], EVENT, 1000, onauth);
+    const params = pool.publish.mock.calls[0][2];
+    expect(params?.onauth).toBeTypeOf('function');
+    const challenge: EventTemplate = { kind: 22242, created_at: 1, tags: [], content: '' };
+    await params!.onauth!(challenge);
+    expect(onauth).toHaveBeenCalledWith(challenge);
+  });
+
+  it("words nostr-tools' own publish timeout as the relay not answering", async () => {
+    const pool = poolFor({ 'wss://slow.example': () => Promise.reject(new Error('publish timed out')) });
+    const result = await publishToRelays(pool, ['wss://slow.example'], EVENT, 1000);
+    expect(result.refused).toEqual([{ relay: 'wss://slow.example', reason: 'wss://slow.example did not answer in time' }]);
+  });
+
+  it('throws a RelayListNotSavedError the UI can tell apart from a signer failure', () => {
+    expect(() => assertPublished({ accepted: [], refused: [{ relay: 'wss://a', reason: 'wss://a did not answer in time' }] }))
+      .toThrow(RelayListNotSavedError);
   });
 
   it('treats no relays at all as not saved', () => {
