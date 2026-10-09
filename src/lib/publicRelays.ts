@@ -15,7 +15,6 @@ import { getServiceConfig } from '@cloistr/collab-common/config';
 export const DEFAULT_PUBLIC_RELAYS = [
   'wss://relay.damus.io',
   'wss://nos.lol',
-  'wss://relay.nostr.band',
 ];
 
 export function getPublicRelays(): string[] {

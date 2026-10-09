@@ -37,6 +37,10 @@ describe('getPublicRelays', () => {
     expect(getPublicRelays()).toEqual([]);
   });
 
+  it('does not list relay.nostr.band (unreachable since 2026-10-09; a dead relay stalled every list load)', () => {
+    expect(DEFAULT_PUBLIC_RELAYS).not.toContain('wss://relay.nostr.band');
+  });
+
   it('parses an explicit comma-separated list, trimming blanks', () => {
     g.__CLOISTR_CONFIG__ = { environment: 'staging', publicRelays: ' wss://a.example , ,wss://b.example' };
     expect(getPublicRelays()).toEqual(['wss://a.example', 'wss://b.example']);
