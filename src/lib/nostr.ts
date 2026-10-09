@@ -14,7 +14,8 @@ import {
 import { withSignerRetry } from '@cloistr/ui';
 import { getServiceConfig } from '@cloistr/collab-common/config';
 import { getPublicRelays } from './publicRelays';
-import { assertPublished, publishToRelays, QUERY_MAX_WAIT_MS } from './relayPublish';
+import { assertPublished, publishToRelays } from './relayPublish';
+import { queryNewest } from './relayQuery';
 import type { AuthState, UserRelay } from './types';
 
 // Relays for fetching/publishing kind 10002. Both the Cloistr relay and the
@@ -51,17 +52,18 @@ export function useAuth() {
 
 // Fetch kind 10002 (NIP-65 relay list)
 async function fetchRelayList(pubkey: string): Promise<UserRelay[]> {
-  const events = await pool.querySync(DEFAULT_RELAYS, {
+  // Per relay, newest wins, and a relay that never connects cannot hold the
+  // sign-in to the full query timeout.
+  const event = await queryNewest(pool, DEFAULT_RELAYS, {
     kinds: [10002],
     authors: [pubkey],
     limit: 1,
-  }, { maxWait: QUERY_MAX_WAIT_MS });
+  });
 
-  if (events.length === 0) {
+  if (!event) {
     return [];
   }
 
-  const event = events[0];
   const relays: UserRelay[] = [];
 
   for (const tag of event.tags) {
