@@ -5,7 +5,7 @@
  */
 
 import { createContext, useContext, useState, useCallback, useMemo } from 'react';
-import { SimplePool, type Event } from 'nostr-tools';
+import { SimplePool, type Event, type EventTemplate, type VerifiedEvent } from 'nostr-tools';
 import {
   AuthProvider as CollabAuthProvider,
   useNostrAuth,
@@ -108,7 +108,11 @@ async function publishRelayList(signer: SignerInterface, relays: UserRelay[]): P
 
   // Each relay is bounded; if none accepts, this throws and the caller shows
   // the error instead of spinning or reporting an unsaved list as saved.
-  const outcome = await publishToRelays(pool, DEFAULT_RELAYS, signedEvent as Event);
+  // Relays that demand NIP-42 AUTH (relay.cloistr.xyz does) get the challenge
+  // signed by the same signer; without it they refuse the write.
+  const onauth = (template: EventTemplate) =>
+    signer.signEvent({ ...template, pubkey }) as Promise<VerifiedEvent>;
+  const outcome = await publishToRelays(pool, DEFAULT_RELAYS, signedEvent as Event, undefined, onauth);
   assertPublished(outcome);
 }
 

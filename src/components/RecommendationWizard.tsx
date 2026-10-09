@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { api } from '../lib/api';
 import { useAuth } from '../lib/nostr';
 import type { Relay } from '../lib/types';
-import { SignerRecovery } from '@cloistr/ui/components';
+import { RelayActionRecovery } from './RelayActionRecovery';
 
 type UseCase = 'general' | 'developer' | 'creator';
 type Performance = 'fastest' | 'balanced' | 'any';
@@ -273,7 +273,7 @@ export function RecommendationWizard({ isOpen, onClose }: Props) {
                         {signerError && failedUrl === relay.url ? (
                           /* Signing failed for this relay. Offer recovery rather
                              than a login prompt — the session is still valid. */
-                          <SignerRecovery
+                          <RelayActionRecovery
                             error={signerError}
                             onRetry={handleRetry}
                             onGoBack={handleRecoveryGoBack}
