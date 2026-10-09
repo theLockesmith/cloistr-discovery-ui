@@ -4,7 +4,7 @@
  * adaptive rate limiting, and session persistence.
  */
 
-import { createContext, useContext, useState, useCallback, useMemo } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react';
 import { SimplePool, type Event, type EventTemplate, type VerifiedEvent } from 'nostr-tools';
 import {
   AuthProvider as CollabAuthProvider,
@@ -14,7 +14,7 @@ import {
 import { withSignerRetry } from '@cloistr/ui';
 import { getServiceConfig } from '@cloistr/collab-common/config';
 import { getPublicRelays } from './publicRelays';
-import { assertPublished, publishToRelays } from './relayPublish';
+import { assertPublished, publishToRelays, RelayListNotSavedError } from './relayPublish';
 import { queryNewest } from './relayQuery';
 import type { AuthState, UserRelay } from './types';
 
@@ -129,7 +129,43 @@ async function publishRelayList(signer: SignerInterface, relays: UserRelay[]): P
 export function useAuthStore() {
   const collabAuth = useNostrAuth();
   const [relayList, setRelayList] = useState<UserRelay[]>([]);
+  const [listStatus, setListStatus] = useState<'loading' | 'loaded' | 'failed'>('loading');
   const [isLoading, setIsLoading] = useState(false);
+  const pubkey = collabAuth.authState.pubkey;
+
+  // Load the signed-in user's relay list whenever the pubkey changes. Sign-in
+  // happens in the @cloistr/ui Header (or SSO), not through login() below, so
+  // this is the only reliable place. Until it has loaded, add/remove refuse:
+  // kind 10002 is replaceable, and writing before reading replaced users'
+  // real lists with a single relay.
+  useEffect(() => {
+    setRelayList([]);
+    setListStatus('loading');
+    if (!pubkey) return;
+    let cancelled = false;
+    fetchRelayList(pubkey).then(
+      relays => {
+        if (cancelled) return;
+        setRelayList(relays);
+        setListStatus('loaded');
+      },
+      () => {
+        if (!cancelled) setListStatus('failed');
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [pubkey]);
+
+  const assertListLoaded = useCallback(() => {
+    if (listStatus === 'loading') {
+      throw new RelayListNotSavedError('your current relay list is still loading; try again in a moment');
+    }
+    if (listStatus === 'failed') {
+      throw new RelayListNotSavedError('your current relay list could not be read from any relay, so it was left unchanged');
+    }
+  }, [listStatus]);
 
   // Map collab-common state to our state format
   const state: AuthState = useMemo(() => ({
@@ -147,11 +183,6 @@ export function useAuthStore() {
     setIsLoading(true);
     try {
       await collabAuth.connectNip07();
-      const pubkey = collabAuth.authState.pubkey;
-      if (pubkey) {
-        const relays = await fetchRelayList(pubkey);
-        setRelayList(relays);
-      }
     } finally {
       setIsLoading(false);
     }
@@ -162,11 +193,6 @@ export function useAuthStore() {
     setIsLoading(true);
     try {
       await collabAuth.connectNip46({ bunkerUrl: bunkerInput });
-      const pubkey = collabAuth.authState.pubkey;
-      if (pubkey) {
-        const relays = await fetchRelayList(pubkey);
-        setRelayList(relays);
-      }
     } finally {
       setIsLoading(false);
     }
@@ -174,7 +200,6 @@ export function useAuthStore() {
 
   const logout = useCallback((): void => {
     collabAuth.disconnect();
-    setRelayList([]);
   }, [collabAuth]);
 
   // Add relay to user's list
@@ -182,6 +207,7 @@ export function useAuthStore() {
     if (!collabAuth.authState.isConnected || !collabAuth.signer) {
       throw new Error('Not logged in');
     }
+    assertListLoaded();
 
     if (relayList.some(r => r.url === url)) {
       return;
@@ -196,13 +222,14 @@ export function useAuthStore() {
       setRelayList(relayList); // not saved, so don't show it as saved
       throw err;
     }
-  }, [collabAuth, relayList]);
+  }, [collabAuth, relayList, assertListLoaded]);
 
   // Remove relay from user's list
   const removeRelay = useCallback(async (url: string): Promise<void> => {
     if (!collabAuth.authState.isConnected || !collabAuth.signer) {
       throw new Error('Not logged in');
     }
+    assertListLoaded();
 
     const newRelayList = relayList.filter(r => r.url !== url);
     setRelayList(newRelayList);
@@ -213,7 +240,7 @@ export function useAuthStore() {
       setRelayList(relayList); // not saved, so don't show it as saved
       throw err;
     }
-  }, [collabAuth, relayList]);
+  }, [collabAuth, relayList, assertListLoaded]);
 
   const hasRelay = useCallback((url: string): boolean => {
     return relayList.some(r => r.url === url);
