@@ -8,7 +8,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import type { Event } from 'nostr-tools';
 
-const authState = { pubkey: 'pk1' as string | null, isConnected: true, method: 'nip07' };
+const authState = { pubkey: 'pk1' as string | null, activePubkey: 'pk1' as string | null, isConnected: true, method: 'nip07' };
 const signer = {
   getPublicKey: vi.fn(async () => 'pk1'),
   signEvent: vi.fn(async (e: object) => ({ ...e, id: 'id', sig: 'sig' })),
@@ -39,6 +39,7 @@ beforeEach(() => {
   published.length = 0;
   queryNewest.mockReset();
   authState.pubkey = 'pk1';
+  authState.activePubkey = 'pk1';
 });
 
 describe('relay list is loaded before it is ever written', () => {
@@ -73,6 +74,32 @@ describe('relay list is loaded before it is ever written', () => {
     await waitFor(async () => {
       await expect(result.current.addRelay('wss://new.example')).rejects.toThrow(/could not be read/);
     });
+    expect(published).toHaveLength(0);
+  });
+
+  it('reloads on a key switch without a new sign-in, and blocks writes until the new list is in', async () => {
+    const lists: Record<string, Event> = {
+      pk1: existing,
+      pk2: { kind: 10002, created_at: 2, tags: [['r', 'wss://second-account.example']] } as Event,
+    };
+    let release: () => void = () => {};
+    queryNewest.mockImplementation(async (_p: unknown, _r: unknown, f: { authors: string[] }) => {
+      if (f.authors[0] === 'pk2') await new Promise<void>(r => { release = r; });
+      return lists[f.authors[0]];
+    });
+    const { result, rerender } = renderHook(() => useAuthStore());
+    await waitFor(() => expect(result.current.hasRelay('wss://existing.example')).toBe(true));
+
+    authState.pubkey = 'pk2';
+    authState.activePubkey = 'pk2';
+    rerender();
+
+    // pk1's list must not be shown or written as pk2's while pk2 loads
+    expect(result.current.hasRelay('wss://existing.example')).toBe(false);
+    await expect(result.current.addRelay('wss://new.example')).rejects.toBeInstanceOf(RelayListNotSavedError);
+
+    await act(async () => release());
+    await waitFor(() => expect(result.current.hasRelay('wss://second-account.example')).toBe(true));
     expect(published).toHaveLength(0);
   });
 });
