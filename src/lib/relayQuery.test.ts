@@ -57,9 +57,21 @@ describe('queryNewest', () => {
     await expect(queryNewest(pool, ['wss://a.example', 'wss://b.example'], {})).rejects.toThrow(/no relay answered/);
   });
 
+  it('a relay that connects but stays SILENT is no answer, not an empty list', async () => {
+    vi.useFakeTimers();
+    const pool = poolFor({ 'wss://a.example': 'never', 'wss://b.example': 'never' });
+    const result = queryNewest(pool, ['wss://a.example', 'wss://b.example'], {}, { maxWaitMs: 5000 });
+    const check = expect(result).rejects.toThrow(/no relay answered/);
+    await vi.advanceTimersByTimeAsync(5001);
+    await check;
+  });
+
   it('queries each relay separately, bounded by maxWait', async () => {
     const pool = poolFor({ 'wss://a.example': [] });
     await queryNewest(pool, ['wss://a.example'], { kinds: [10002] }, { maxWaitMs: 7000 });
-    expect(pool.subscribeEose).toHaveBeenCalledWith(['wss://a.example'], { kinds: [10002] }, expect.objectContaining({ maxWait: 7000 }));
+    expect(pool.subscribeEose).toHaveBeenCalledWith(['wss://a.example'], { kinds: [10002] }, expect.any(Object));
+    // nostr-tools turns silence into a fake EOSE at maxWait, so it must be
+    // set beyond our own timeout or silence would read as "no list".
+    expect(pool.subscribeEose.mock.calls[0][2].maxWait).toBeGreaterThan(7000);
   });
 });

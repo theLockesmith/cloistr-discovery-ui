@@ -18,5 +18,8 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./src/test-setup.ts'],
+    // Load @cloistr/ui through vite so a test's vi.mock('@cloistr/auth') also
+    // reaches the hooks inside it (useWriteGate reads useNostrAuth).
+    server: { deps: { inline: [/@cloistr\/ui/] } },
   },
 })
