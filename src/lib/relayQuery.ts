@@ -12,9 +12,6 @@ export const QUERY_GRACE_MS = 1_500;
 /** The reason nostr-tools closes a subscribeEose with once the relay sent EOSE. */
 const EOSE_REASON = 'closed automatically on eose';
 
-/** How far past our own timeout nostr-tools' maxWait is pushed. */
-const SILENCE_MARGIN_MS = 60_000;
-
 interface QueryPool {
   subscribeEose(
     relays: string[],
@@ -48,39 +45,20 @@ export async function queryNewest(
       resolve();
     };
 
-    const closers: { close(reason?: string): void }[] = [];
-    let done = false;
-    const finishAll = () => {
-      if (done) return;
-      done = true;
-      finish();
-      closers.forEach(c => c.close('query finished'));
-    };
-
     for (const relay of relays) {
       let settled = false;
-      const settle = (gotEose: boolean) => {
-        if (settled) return;
-        settled = true;
-        clearTimeout(timer);
-        if (gotEose) answered += 1;
-        pending -= 1;
-        if (pending === 0) finishAll();
-        else if (answered > 0 && !grace) grace = setTimeout(finishAll, graceMs);
-      };
-      // Our own bound. nostr-tools turns a silent relay into a fake EOSE at
-      // its maxWait, which would read as "no list", so its maxWait is set
-      // past ours and a relay that has not sent EOSE by now is no answer.
-      const timer = setTimeout(() => {
-        settle(false);
-        closer.close('no answer in time');
-      }, maxWaitMs);
-      const closer = pool.subscribeEose([relay], filter, {
-        maxWait: maxWaitMs + SILENCE_MARGIN_MS,
+      pool.subscribeEose([relay], filter, {
+        maxWait: maxWaitMs,
         onevent: e => { found.push(e); },
-        onclose: reasons => settle(reasons.some(r => r.reason === EOSE_REASON)),
+        onclose: reasons => {
+          if (settled) return;
+          settled = true;
+          if (reasons.some(r => r.reason === EOSE_REASON)) answered += 1;
+          pending -= 1;
+          if (pending === 0) finish();
+          else if (answered > 0 && !grace) grace = setTimeout(finish, graceMs);
+        },
       });
-      closers.push(closer);
     }
   });
 

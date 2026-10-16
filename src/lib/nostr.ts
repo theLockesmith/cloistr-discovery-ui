@@ -4,14 +4,14 @@
  * adaptive rate limiting, and session persistence.
  */
 
-import { createContext, useContext, useState, useCallback, useMemo } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react';
 import { SimplePool, type Event, type EventTemplate, type VerifiedEvent } from 'nostr-tools';
 import {
   AuthProvider as CollabAuthProvider,
   useNostrAuth,
   type SignerInterface,
 } from '@cloistr/auth';
-import { withSignerRetry, useWriteGate } from '@cloistr/ui';
+import { withSignerRetry } from '@cloistr/ui';
 import { getServiceConfig } from '@cloistr/collab-common/config';
 import { getPublicRelays } from './publicRelays';
 import { assertPublished, publishToRelays, RelayListNotSavedError } from './relayPublish';
@@ -128,36 +128,44 @@ async function publishRelayList(signer: SignerInterface, relays: UserRelay[]): P
  */
 export function useAuthStore() {
   const collabAuth = useNostrAuth();
-  // The loaded list, tagged with whose it is, so a slow load for a previous
-  // key can never be shown or written as the current key's list.
-  const [loaded, setLoaded] = useState<{ pubkey: string; relays: UserRelay[] } | null>(null);
+  const [relayList, setRelayList] = useState<UserRelay[]>([]);
+  const [listStatus, setListStatus] = useState<'loading' | 'loaded' | 'failed'>('loading');
   const [isLoading, setIsLoading] = useState(false);
+  const pubkey = collabAuth.authState.pubkey;
 
-  // Sign-in happens in the @cloistr/ui Header (or SSO, a key switch, a pin
-  // restore), not through login() below. The shared write gate reloads the
-  // list on every identity change and blocks writes until it has loaded:
+  // Load the signed-in user's relay list whenever the pubkey changes. Sign-in
+  // happens in the @cloistr/ui Header (or SSO), not through login() below, so
+  // this is the only reliable place. Until it has loaded, add/remove refuse:
   // kind 10002 is replaceable, and writing before reading replaced users'
   // real lists with a single relay.
-  const gate = useWriteGate(async (pubkey: string) => {
-    const relays = await fetchRelayList(pubkey);
-    setLoaded({ pubkey, relays });
-  });
-  const relayList = useMemo(
-    () => (gate.loaded && loaded && loaded.pubkey === gate.pubkey ? loaded.relays : []),
-    [gate.loaded, gate.pubkey, loaded],
-  );
-  const setRelayList = useCallback((relays: UserRelay[]) => {
-    setLoaded(prev => (prev ? { ...prev, relays } : prev));
-  }, []);
+  useEffect(() => {
+    setRelayList([]);
+    setListStatus('loading');
+    if (!pubkey) return;
+    let cancelled = false;
+    fetchRelayList(pubkey).then(
+      relays => {
+        if (cancelled) return;
+        setRelayList(relays);
+        setListStatus('loaded');
+      },
+      () => {
+        if (!cancelled) setListStatus('failed');
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [pubkey]);
 
   const assertListLoaded = useCallback(() => {
-    if (gate.failed) {
-      throw new RelayListNotSavedError('your current relay list could not be read from any relay, so it was left unchanged');
-    }
-    if (!gate.loaded) {
+    if (listStatus === 'loading') {
       throw new RelayListNotSavedError('your current relay list is still loading; try again in a moment');
     }
-  }, [gate.failed, gate.loaded]);
+    if (listStatus === 'failed') {
+      throw new RelayListNotSavedError('your current relay list could not be read from any relay, so it was left unchanged');
+    }
+  }, [listStatus]);
 
   // Map collab-common state to our state format
   const state: AuthState = useMemo(() => ({
