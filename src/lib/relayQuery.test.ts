@@ -66,6 +66,29 @@ describe('queryNewest', () => {
     await check;
   });
 
+  // cloistr-pr on !100/!101: a subscription was closed twice (once by its own
+  // timer or by nostr-tools on EOSE, then again when the query finished), which
+  // double-decrements the pool's ongoingOperations.
+  it('closes each subscription at most once, and never one the relay already ended', async () => {
+    vi.useFakeTimers();
+    const pool = poolFor({ 'wss://ok.example': [ev('a', 1)], 'wss://slow.example': 'never', 'wss://dead.example': 'never' });
+    const result = queryNewest(pool, ['wss://ok.example', 'wss://slow.example', 'wss://dead.example'], {}, { graceMs: 20_000, maxWaitMs: 5000 });
+    await vi.advanceTimersByTimeAsync(5001);
+    await result;
+    const closes = pool.subscribeEose.mock.results.map(r => r.value.close.mock.calls.length);
+    expect(closes).toEqual([0, 1, 1]);
+  });
+
+  it('closes still-open subscriptions once when the grace period ends the query', async () => {
+    vi.useFakeTimers();
+    const pool = poolFor({ 'wss://ok.example': [ev('a', 1)], 'wss://slow.example': 'never' });
+    const result = queryNewest(pool, ['wss://ok.example', 'wss://slow.example'], {}, { graceMs: 1000, maxWaitMs: 5000 });
+    await vi.advanceTimersByTimeAsync(6000);
+    await result;
+    const closes = pool.subscribeEose.mock.results.map(r => r.value.close.mock.calls.length);
+    expect(closes).toEqual([0, 1]);
+  });
+
   it('queries each relay separately, bounded by maxWait', async () => {
     const pool = poolFor({ 'wss://a.example': [] });
     await queryNewest(pool, ['wss://a.example'], { kinds: [10002] }, { maxWaitMs: 7000 });
