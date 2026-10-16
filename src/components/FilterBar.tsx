@@ -4,6 +4,12 @@ import type { RelayFilters } from '../lib/types';
 interface FilterBarProps {
   filters: RelayFilters;
   onFilterChange: (filters: RelayFilters) => void;
+  /**
+   * Show the topic chips. The backend does not populate topics yet, so the
+   * page hides them until a loaded relay carries some; an active topic filter
+   * keeps them visible so it can be cleared.
+   */
+  showTopics?: boolean;
 }
 
 // Common filter options
@@ -24,7 +30,7 @@ const POPULAR_NIPS = [
   { nip: 57, label: 'Zaps' },
 ];
 
-export function FilterBar({ filters, onFilterChange }: FilterBarProps) {
+export function FilterBar({ filters, onFilterChange, showTopics = true }: FilterBarProps) {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [searchText, setSearchText] = useState('');
 
@@ -122,20 +128,22 @@ export function FilterBar({ filters, onFilterChange }: FilterBarProps) {
       </div>
 
       {/* Topic chips */}
-      <div className="filter-section">
-        <span className="filter-label">Topics:</span>
-        <div className="filter-chips">
-          {POPULAR_TOPICS.map(topic => (
-            <button
-              key={topic}
-              className={`chip ${isTopicActive(topic) ? 'active' : ''}`}
-              onClick={() => toggleTopic(topic)}
-            >
-              {topic}
-            </button>
-          ))}
+      {(showTopics || !!filters.topic) && (
+        <div className="filter-section">
+          <span className="filter-label">Topics:</span>
+          <div className="filter-chips">
+            {POPULAR_TOPICS.map(topic => (
+              <button
+                key={topic}
+                className={`chip ${isTopicActive(topic) ? 'active' : ''}`}
+                onClick={() => toggleTopic(topic)}
+              >
+                {topic}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* NIP chips */}
       <div className="filter-section">
