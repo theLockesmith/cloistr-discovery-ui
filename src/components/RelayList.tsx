@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import type { Relay, RelayFilters } from '../lib/types';
 import { api } from '../lib/api';
 import { RelayCard } from './RelayCard';
@@ -8,17 +8,21 @@ interface RelayListProps {
   selectedRelays?: Relay[];
   onSelectRelay?: (relay: Relay, selected: boolean) => void;
   maxSelection?: number;
+  /** Called with each loaded page of relays. */
+  onRelaysLoaded?: (relays: Relay[]) => void;
 }
 
 type SortField = 'latency_ms' | 'uptime_percent' | 'health' | 'name';
 type SortOrder = 'asc' | 'desc';
 
-export function RelayList({ filters, selectedRelays, onSelectRelay, maxSelection }: RelayListProps) {
+export function RelayList({ filters, selectedRelays, onSelectRelay, maxSelection, onRelaysLoaded }: RelayListProps) {
   const [relays, setRelays] = useState<Relay[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sortField, setSortField] = useState<SortField>('latency_ms');
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
+  const onRelaysLoadedRef = useRef(onRelaysLoaded);
+  onRelaysLoadedRef.current = onRelaysLoaded;
 
   // Fetch relays when filters change
   useEffect(() => {
@@ -32,6 +36,7 @@ export function RelayList({ filters, selectedRelays, onSelectRelay, maxSelection
         const response = await api.getRelays(filters);
         if (!cancelled) {
           setRelays(response.relays || []);
+          onRelaysLoadedRef.current?.(response.relays || []);
         }
       } catch (err) {
         if (!cancelled) {
@@ -75,6 +80,17 @@ export function RelayList({ filters, selectedRelays, onSelectRelay, maxSelection
         if (aUptime === -1) return 1; // nulls to end
         if (bUptime === -1) return -1; // nulls to end
         return sortOrder === 'asc' ? aUptime - bUptime : bUptime - aUptime;
+      }
+
+      // Name: case-insensitive, and relays with no name go last either way.
+      if (sortField === 'name') {
+        const aName = a.name?.trim() ?? '';
+        const bName = b.name?.trim() ?? '';
+        if (!aName && !bName) return 0;
+        if (!aName) return 1;
+        if (!bName) return -1;
+        const cmp = aName.localeCompare(bName, undefined, { sensitivity: 'base' });
+        return sortOrder === 'asc' ? cmp : -cmp;
       }
 
       // Handle strings (name field)
