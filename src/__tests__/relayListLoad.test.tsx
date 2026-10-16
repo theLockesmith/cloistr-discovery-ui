@@ -102,4 +102,34 @@ describe('relay list is loaded before it is ever written', () => {
     await waitFor(() => expect(result.current.hasRelay('wss://second-account.example')).toBe(true));
     expect(published).toHaveLength(0);
   });
+
+  // cloistr-pr on !100: a load for the previous key that resolves AFTER the new
+  // key's load must not replace the new key's list, or the next Add publishes
+  // a list of just the new relay (the 2026-10-09 wipe again).
+  it('a stale load for the previous key, resolving late, cannot empty the current list', async () => {
+    const lists: Record<string, Event> = {
+      pk1: existing,
+      pk2: { kind: 10002, created_at: 2, tags: [['r', 'wss://second-account.example']] } as Event,
+    };
+    let releasePk1: () => void = () => {};
+    queryNewest.mockImplementation(async (_p: unknown, _r: unknown, f: { authors: string[] }) => {
+      if (f.authors[0] === 'pk1') await new Promise<void>(r => { releasePk1 = r; });
+      return lists[f.authors[0]];
+    });
+    const { result, rerender } = renderHook(() => useAuthStore());
+
+    authState.pubkey = 'pk2';
+    authState.activePubkey = 'pk2';
+    rerender();
+    await waitFor(() => expect(result.current.hasRelay('wss://second-account.example')).toBe(true));
+
+    await act(async () => releasePk1());
+    await act(() => result.current.addRelay('wss://new.example'));
+
+    expect(published).toHaveLength(1);
+    expect(published[0].tags).toEqual([
+      ['r', 'wss://second-account.example'],
+      ['r', 'wss://new.example'],
+    ]);
+  });
 });

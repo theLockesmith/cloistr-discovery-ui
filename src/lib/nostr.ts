@@ -4,7 +4,7 @@
  * adaptive rate limiting, and session persistence.
  */
 
-import { createContext, useContext, useState, useCallback, useMemo } from 'react';
+import { createContext, useContext, useState, useCallback, useMemo, useRef } from 'react';
 import { SimplePool, type Event, type EventTemplate, type VerifiedEvent } from 'nostr-tools';
 import {
   AuthProvider as CollabAuthProvider,
@@ -138,8 +138,14 @@ export function useAuthStore() {
   // list on every identity change and blocks writes until it has loaded:
   // kind 10002 is replaceable, and writing before reading replaced users'
   // real lists with a single relay.
+  // Only the newest load may set the list: a load for the previous key that
+  // resolves late would otherwise replace the current key's list, and the next
+  // Add would publish just the new relay (the 2026-10-09 wipe again).
+  const latestLoad = useRef(0);
   const gate = useWriteGate(async (pubkey: string) => {
+    const load = ++latestLoad.current;
     const relays = await fetchRelayList(pubkey);
+    if (load !== latestLoad.current) return;
     setLoaded({ pubkey, relays });
   });
   const relayList = useMemo(
@@ -154,10 +160,11 @@ export function useAuthStore() {
     if (gate.failed) {
       throw new RelayListNotSavedError('your current relay list could not be read from any relay, so it was left unchanged');
     }
-    if (!gate.loaded) {
+    // The shown list must be the signed-in key's own, never an empty stand-in.
+    if (!gate.loaded || !loaded || loaded.pubkey !== gate.pubkey) {
       throw new RelayListNotSavedError('your current relay list is still loading; try again in a moment');
     }
-  }, [gate.failed, gate.loaded]);
+  }, [gate.failed, gate.loaded, gate.pubkey, loaded]);
 
   // Map collab-common state to our state format
   const state: AuthState = useMemo(() => ({
