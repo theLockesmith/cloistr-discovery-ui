@@ -15,11 +15,11 @@
 
 a {
   font-weight: 500;
-  color: var(--cloistr-primary);
+  color: var(--cloistr-primary-text);
   text-decoration: inherit;
 }
 a:hover {
-  color: var(--cloistr-primary);
+  color: var(--cloistr-primary-text);
 }
 
 body {
@@ -63,7 +63,7 @@ button:focus-visible {
     background-color: var(--cloistr-bg);
   }
   a:hover {
-    color: var(--cloistr-primary);
+    color: var(--cloistr-primary-text);
   }
   button {
     background-color: var(--cloistr-bg-elevated);
