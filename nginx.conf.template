@@ -27,6 +27,7 @@ server {
 
     # SPA fallback - serve index.html for all routes
     location / {
+        add_header Cache-Control "no-cache, no-store, must-revalidate" always;
         try_files $uri $uri/ /index.html;
     }
 
