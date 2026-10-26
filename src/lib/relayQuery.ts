@@ -48,17 +48,26 @@ export async function queryNewest(
       resolve();
     };
 
-    const closers: { close(reason?: string): void }[] = [];
+    // Each subscription is closed at most once: one nostr-tools already ended
+    // (EOSE, failure) or one closed by its own timer is not closed again, since
+    // every close() decrements the pool's ongoingOperations.
+    const stillOpen: (() => void)[] = [];
     let done = false;
     const finishAll = () => {
       if (done) return;
       done = true;
       finish();
-      closers.forEach(c => c.close('query finished'));
+      stillOpen.forEach(close => close());
     };
 
     for (const relay of relays) {
       let settled = false;
+      let ended = false;
+      const closeOnce = (reason: string) => {
+        if (ended) return;
+        ended = true;
+        closer.close(reason);
+      };
       const settle = (gotEose: boolean) => {
         if (settled) return;
         settled = true;
@@ -72,15 +81,18 @@ export async function queryNewest(
       // its maxWait, which would read as "no list", so its maxWait is set
       // past ours and a relay that has not sent EOSE by now is no answer.
       const timer = setTimeout(() => {
+        closeOnce('no answer in time');
         settle(false);
-        closer.close('no answer in time');
       }, maxWaitMs);
       const closer = pool.subscribeEose([relay], filter, {
         maxWait: maxWaitMs + SILENCE_MARGIN_MS,
         onevent: e => { found.push(e); },
-        onclose: reasons => settle(reasons.some(r => r.reason === EOSE_REASON)),
+        onclose: reasons => {
+          ended = true; // nostr-tools has already closed it
+          settle(reasons.some(r => r.reason === EOSE_REASON));
+        },
       });
-      closers.push(closer);
+      stillOpen.push(() => closeOnce('query finished'));
     }
   });
 
