@@ -411,7 +411,8 @@ a:hover {
 .advanced-toggle {
   background: none;
   border: none;
-  color: var(--color-primary);
+  /* primary-text, not primary: #7c3aed is 3.05:1 on the dark surface */
+  color: var(--cloistr-primary-text);
   cursor: pointer;
   font-size: 0.875rem;
   padding: 0;
@@ -419,7 +420,7 @@ a:hover {
 }
 
 .advanced-toggle:hover {
-  color: var(--color-primary-hover);
+  text-decoration: underline;
 }
 
 .advanced-filters {
