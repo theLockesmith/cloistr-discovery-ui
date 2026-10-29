@@ -46,7 +46,6 @@ export interface RelayFilters {
   health?: 'online' | 'degraded' | 'offline';
   nips?: string;  // comma-separated
   search?: string; // full-text search
-  topic?: string; // comma-separated, OR logic
   atmosphere?: string;
   moderation?: string;
   content_policy?: string;

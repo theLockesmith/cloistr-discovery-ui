@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useState } from 'react';
 import { Header, Footer, ToastProvider, SharedAuthProvider, ThemeProvider } from '@cloistr/ui/components';
 import '@cloistr/ui/styles';
 import { getServiceConfig } from '@cloistr/collab-common/config';
@@ -32,13 +32,6 @@ function AppContent() {
   const [showWizard, setShowWizard] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [selectedRelays, setSelectedRelays] = useState<Relay[]>([]);
-  // Topic chips stay hidden until a loaded relay actually carries topics:
-  // the backend does not populate them yet (0 of 3,529 on 2026-10-16), and
-  // chips that can match nothing advertise a feature that is not there.
-  const [topicsAvailable, setTopicsAvailable] = useState(false);
-  const noteTopics = useCallback((relays: Relay[]) => {
-    if (relays.some(r => r.topics && r.topics.length > 0)) setTopicsAvailable(true);
-  }, []);
   const [showCompare, setShowCompare] = useState(false);
 
   const handleSelectRelay = (relay: Relay, selected: boolean) => {
@@ -82,7 +75,7 @@ function AppContent() {
               Find Relays
             </button>
           </div>
-          <FilterBar filters={filters} onFilterChange={setFilters} showTopics={topicsAvailable} />
+          <FilterBar filters={filters} onFilterChange={setFilters} />
 
           <div className="view-toggle">
             <button
@@ -101,7 +94,6 @@ function AppContent() {
 
           {viewMode === 'list' && (
             <RelayList
-              onRelaysLoaded={noteTopics}
               filters={filters}
               selectedRelays={selectedRelays}
               onSelectRelay={handleSelectRelay}
