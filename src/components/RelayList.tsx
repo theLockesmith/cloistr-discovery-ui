@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import type { Relay, RelayFilters } from '../lib/types';
 import { api } from '../lib/api';
 import { RelayCard } from './RelayCard';
@@ -8,21 +8,17 @@ interface RelayListProps {
   selectedRelays?: Relay[];
   onSelectRelay?: (relay: Relay, selected: boolean) => void;
   maxSelection?: number;
-  /** Called with each loaded page of relays. */
-  onRelaysLoaded?: (relays: Relay[]) => void;
 }
 
 type SortField = 'latency_ms' | 'uptime_percent' | 'health' | 'name';
 type SortOrder = 'asc' | 'desc';
 
-export function RelayList({ filters, selectedRelays, onSelectRelay, maxSelection, onRelaysLoaded }: RelayListProps) {
+export function RelayList({ filters, selectedRelays, onSelectRelay, maxSelection }: RelayListProps) {
   const [relays, setRelays] = useState<Relay[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sortField, setSortField] = useState<SortField>('latency_ms');
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
-  const onRelaysLoadedRef = useRef(onRelaysLoaded);
-  onRelaysLoadedRef.current = onRelaysLoaded;
 
   // Fetch relays when filters change
   useEffect(() => {
@@ -36,7 +32,6 @@ export function RelayList({ filters, selectedRelays, onSelectRelay, maxSelection
         const response = await api.getRelays(filters);
         if (!cancelled) {
           setRelays(response.relays || []);
-          onRelaysLoadedRef.current?.(response.relays || []);
         }
       } catch (err) {
         if (!cancelled) {

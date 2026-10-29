@@ -4,22 +4,14 @@ import type { RelayFilters } from '../lib/types';
 interface FilterBarProps {
   filters: RelayFilters;
   onFilterChange: (filters: RelayFilters) => void;
-  /**
-   * Show the topic chips. The backend does not populate topics yet, so the
-   * page hides them until a loaded relay carries some; an active topic filter
-   * keeps them visible so it can be cleared.
-   */
-  showTopics?: boolean;
 }
 
 // Common filter options
 const HEALTH_OPTIONS = ['online', 'degraded', 'offline'] as const;
 const MODERATION_OPTIONS = ['unmoderated', 'light', 'active', 'strict'] as const;
 const CONTENT_POLICY_OPTIONS = ['anything', 'sfw', 'nsfw-allowed', 'nsfw-only'] as const;
-const PAYMENT_OPTIONS = ['free', 'paid', 'hybrid'] as const;
-
-// Popular topics for quick access
-const POPULAR_TOPICS = ['bitcoin', 'nostr', 'tech', 'art', 'music', 'gaming', 'sports'];
+// NIP-11 only says whether payment is required, so the API can answer only these.
+const PAYMENT_OPTIONS = ['free', 'paid'] as const;
 
 // Popular NIPs
 const POPULAR_NIPS = [
@@ -30,7 +22,7 @@ const POPULAR_NIPS = [
   { nip: 57, label: 'Zaps' },
 ];
 
-export function FilterBar({ filters, onFilterChange, showTopics = true }: FilterBarProps) {
+export function FilterBar({ filters, onFilterChange }: FilterBarProps) {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [searchText, setSearchText] = useState('');
 
@@ -42,19 +34,6 @@ export function FilterBar({ filters, onFilterChange, showTopics = true }: Filter
       (newFilters as Record<string, unknown>)[key] = value;
     }
     onFilterChange(newFilters);
-  };
-
-  const toggleTopic = (topic: string) => {
-    const current = filters.topic?.split(',').filter(Boolean) || [];
-    const index = current.indexOf(topic);
-
-    if (index >= 0) {
-      current.splice(index, 1);
-    } else {
-      current.push(topic);
-    }
-
-    updateFilter('topic', current.join(',') || undefined);
   };
 
   const toggleNip = (nip: number) => {
@@ -69,11 +48,6 @@ export function FilterBar({ filters, onFilterChange, showTopics = true }: Filter
     }
 
     updateFilter('nips', current.join(',') || undefined);
-  };
-
-  const isTopicActive = (topic: string) => {
-    const topics = filters.topic?.split(',') || [];
-    return topics.includes(topic);
   };
 
   const isNipActive = (nip: number) => {
@@ -126,24 +100,6 @@ export function FilterBar({ filters, onFilterChange, showTopics = true }: Filter
           ))}
         </div>
       </div>
-
-      {/* Topic chips */}
-      {(showTopics || !!filters.topic) && (
-        <div className="filter-section">
-          <span className="filter-label">Topics:</span>
-          <div className="filter-chips">
-            {POPULAR_TOPICS.map(topic => (
-              <button
-                key={topic}
-                className={`chip ${isTopicActive(topic) ? 'active' : ''}`}
-                onClick={() => toggleTopic(topic)}
-              >
-                {topic}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* NIP chips */}
       <div className="filter-section">

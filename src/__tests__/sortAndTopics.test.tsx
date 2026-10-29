@@ -1,6 +1,7 @@
 /**
  * Production 2026-10-16 (WV3): name sort put unnamed relays first, and the
  * topic chips advertised a filter no relay can match (0 relays carry topics).
+ * The chips were later removed outright; see the filter bar tests below.
  */
 import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
@@ -44,27 +45,22 @@ describe('name sort', () => {
     expect(order().slice(2).sort()).toEqual(['wss://blank.example', 'wss://zz-unnamed.example']);
   });
 
-  it('reports the loaded relays so the page can tell whether any carry topics', async () => {
-    const onRelaysLoaded = vi.fn();
-    withAuth(<RelayList filters={{}} onRelaysLoaded={onRelaysLoaded} />);
-    await waitFor(() => expect(onRelaysLoaded).toHaveBeenCalledWith(relays));
-  });
 });
 
-describe('topic chips', () => {
-  it('are hidden while no relay carries topics', () => {
-    render(<FilterBar filters={{}} onFilterChange={() => {}} showTopics={false} />);
+// 2026-10-29: the server has no topic source (the annotation aggregator was
+// removed), so every topic filter matches zero relays. The chips are gone, not
+// hidden, and the Payment dropdown offers only what NIP-11 can answer.
+describe('filter bar', () => {
+  it('never shows topic chips, even with a topic filter set', () => {
+    render(<FilterBar filters={{ topic: 'bitcoin' } as never} onFilterChange={() => {}} />);
     expect(screen.queryByText('Topics:')).toBeNull();
     expect(screen.queryByRole('button', { name: 'bitcoin' })).toBeNull();
   });
 
-  it('are shown when relays carry topics', () => {
-    render(<FilterBar filters={{}} onFilterChange={() => {}} showTopics />);
-    expect(screen.getByRole('button', { name: 'bitcoin' })).toBeTruthy();
-  });
-
-  it('stay visible while a topic filter is active, so it can be cleared', () => {
-    render(<FilterBar filters={{ topic: 'bitcoin' }} onFilterChange={() => {}} showTopics={false} />);
-    expect(screen.getByRole('button', { name: 'bitcoin' })).toBeTruthy();
+  it('offers only free and paid as payment filters', () => {
+    render(<FilterBar filters={{}} onFilterChange={() => {}} />);
+    fireEvent.click(screen.getByRole('button', { name: /advanced filters/ }));
+    const select = screen.getByText('Payment:').querySelector('select')!;
+    expect([...select.options].map(o => o.value)).toEqual(['', 'free', 'paid']);
   });
 });
